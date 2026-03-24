@@ -17,10 +17,10 @@ This repository is used to manage and track weekly progress reports for all memb
 - Each member must create their **own branch** from the main repository.
 - Branch naming convention:
 
-<your-name>-branch
+<your-full-name>
 
 Example:
-dylan-branch
+Tran-Van-Ah
 
 ---
 
@@ -45,6 +45,7 @@ Each weekly folder must include:
    - Summary of what you have done during the week
    - Issues faced
    - Solutions / learnings
+   - References
 
 2. Source Code / Work Artifacts
    - Code files
@@ -58,7 +59,7 @@ Each weekly folder must include:
 
 repository/
 │
-├── dylan-branch/
+├── Tran-Van-A/
 │   ├── week1_27-03-2026/
 │   │   ├── report.pdf
 │   │   ├── source_code/
