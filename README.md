@@ -1,64 +1,128 @@
-# CyberSec-Internship
+# 🔐 CyberSec Internship - Weekly Reporting
 
-# 📘 Weekly Reporting Guideline
+This repository is used to manage, track, and review weekly progress reports for all internship members.
 
-This repository is used to manage and track weekly progress reports for all members.
+---
+
+## 🎯 Objectives
+
+- Ensure consistent **weekly reporting**
+- Track individual progress via **GitHub**
+- Maintain structured and reviewable work history
+
+---
 
 ## 📌 General Rules
 
-- Each member must submit **one report per week**.
-- All work and reports must be managed and submitted through **GitHub**.
-- Follow the structure and naming conventions strictly.
+- Each member must submit **exactly ONE report per week**
+- All submissions must be pushed to **GitHub**
+- Follow **naming conventions strictly**
+- Late or incorrectly formatted submissions may be **rejected**
 
 ---
 
 ## 🌿 Branch Management
 
-- Each member must create their **own branch** from the main repository.
-- Branch naming convention:
-your-full-name
+Each member must work on their **own branch**
 
-Example:
-Tran-Van-A
+### 📛 Naming Convention
+
+```
+<full-name-no-accent>
+```
+
+### ✅ Examples
+
+```
+tran-van-a
+```
+
+### ❗ Rules
+
+- Use lowercase
+- Replace spaces with `-`
+- Do NOT use Vietnamese accents
+- Do NOT commit directly to `main`
 
 ---
 
-## 📅 Weekly Report Structure
+## 📅 Weekly Folder Structure
 
-- Each week must be stored in a separate folder.
-- Folder naming format:
+Each report must be stored in a separate folder.
 
+### 📛 Format
+
+```
 week<week_number>_<dd-mm-yyyy>
+```
 
-Example:
+### ✅ Examples
+
+```
 week1_27-03-2026
 week2_03-04-2026
+```
 
 ---
 
-## 📂 Folder Contents
+## 📂 Required Contents
 
-Each weekly folder must include:
+Each weekly folder MUST include:
 
-1. Report File (PDF)
-   - Summary of what you have done during the week
-   - Issues faced
-   - Solutions / learnings
-   - References
+### 1. 📄 Report (PDF)
 
-2. Source Code / Work Artifacts
-   - Code files
-   - Scripts
-   - Configurations
-   - Any related materials
+File name:
+```
+report.pdf
+```
+
+Content must include:
+
+- Work completed
+- Tasks in progress
+- Issues encountered
+- Solutions / learnings
+- References (if any)
 
 ---
 
-## 📄 Example Structure
+### 2. 💻 Source Code / Artifacts
 
+Folder:
+```
+source_code/
+```
+
+Includes:
+
+- Code
+- Scripts
+- Config files
+- Logs (if relevant)
+
+---
+
+### 3. 📝 Notes (Optional but Recommended)
+
+File:
+```
+notes.md
+```
+
+Used for:
+
+- Quick notes
+- Debug logs
+- Extra explanations
+
+---
+
+## 📁 Example Repository Structure
+
+```
 repository/
 │
-├── Tran-Van-A/
+├── tran-van-a/
 │   ├── week1_27-03-2026/
 │   │   ├── report.pdf
 │   │   ├── source_code/
@@ -68,47 +132,101 @@ repository/
 │       ├── report.pdf
 │       ├── source_code/
 │       └── notes.md
+```
 
 ---
 
 ## 🔄 Workflow
 
-1. Pull the latest code from main
-2. Create or switch to your branch
-3. Add your weekly folder
-4. Commit your changes:
+### Step 1: Update repository
 
+```
+git checkout main
+git pull origin main
+```
+
+### Step 2: Switch to your branch
+
+```
+git checkout <your-branch>
+```
+
+### Step 3: Add your work
+
+```
 git add .
-git commit -m "Add week X report"
+```
 
-5. Push to your branch:
+### Step 4: Commit
 
+```
+git commit -m "week X: add report"
+```
+
+### Step 5: Push
+
+```
 git push origin <your-branch>
+```
+
+---
+
+## 🚀 Submission Process (Recommended)
+
+- Create a **Pull Request (PR)** from your branch → `main`
+- Title format:
+```
+[Week X] Full Name Report
+```
+
+Example:
+```
+[Week 1] Tran Van A Report
+```
 
 ---
 
 ## ⚠️ Important Notes
 
-- Do NOT commit directly to main
-- Ensure file names and structure are correct
-- Submit your report before the weekly deadline
-- Keep commits clean and meaningful
+- ❌ No direct commits to `main`
+- ❌ No missing report files
+- ❌ No wrong folder naming
+- ❌ No empty source_code folder
+
+- ✅ Keep commits clean
+- ✅ Follow structure strictly
+- ✅ Submit before deadline
 
 ---
 
-## ✅ Checklist Before Submission
+## ✅ Submission Checklist
 
-- [ ] Created correct week folder
-- [ ] Added PDF report
-- [ ] Included source code or artifacts
-- [ ] Pushed to your branch
-- [ ] Followed naming conventions
+- [ ] Correct branch name
+- [ ] Correct week folder name
+- [ ] Added `report.pdf`
+- [ ] Added `source_code/`
+- [ ] Pushed to GitHub
+- [ ] Created Pull Request
 
 ---
 
-## 📬 Contact
+## 📬 Support
 
-If you have any issues, please contact the repository maintainer.
+If you encounter issues:
+
+- Contact your supervisor
+- Or open an issue in this repository
+
+---
+
+## 🏁 Final Notes
+
+This repository reflects your **learning progress and discipline**.
+
+Make sure your work is:
+- Clear
+- Organized
+- Reproducible
 
 ---
 
