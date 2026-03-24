@@ -8,7 +8,7 @@ This repository is used to manage, track, and review weekly progress reports for
 
 - Ensure consistent **weekly reporting**
 - Track individual progress via **GitHub**
-- Maintain structured and reviewable work history
+- Enable **progressive thesis writing** (weekly reports → final thesis)
 
 ---
 
@@ -17,7 +17,7 @@ This repository is used to manage, track, and review weekly progress reports for
 - Each member must submit **exactly ONE report per week**
 - All submissions must be pushed to **GitHub**
 - Follow **naming conventions strictly**
-- Late or incorrectly formatted submissions may be **rejected**
+- Each report must contribute to the **final thesis**
 
 ---
 
@@ -26,19 +26,17 @@ This repository is used to manage, track, and review weekly progress reports for
 Each member must work on their **own branch**
 
 ### 📛 Naming Convention
-
 ```
 <full-name-no-accent>
 ```
 
 ### ✅ Examples
-
 ```
 tran-van-a
+nguyen-duc-minh
 ```
 
 ### ❗ Rules
-
 - Use lowercase
 - Replace spaces with `-`
 - Do NOT use Vietnamese accents
@@ -48,19 +46,30 @@ tran-van-a
 
 ## 📅 Weekly Folder Structure
 
-Each report must be stored in a separate folder.
-
 ### 📛 Format
-
 ```
 week<week_number>_<dd-mm-yyyy>
 ```
 
-### ✅ Examples
-
+### ✅ Example
 ```
 week1_27-03-2026
-week2_03-04-2026
+```
+
+---
+
+## 📄 Report Naming Convention
+
+### 📛 Format
+```
+week<week>_<topic>_<tool>.pdf
+```
+
+### ✅ Examples
+```
+week1_api-testing_crapi.pdf
+week2_ids_wazuh.pdf
+week3_rag_qwen.pdf
 ```
 
 ---
@@ -69,164 +78,103 @@ week2_03-04-2026
 
 Each weekly folder MUST include:
 
-### 1. 📄 Report (PDF)
-
-File name:
-```
-report_<topic>_<keyword>.pdf
-```
-
-Content must include:
-
-- Work completed
-- Tasks in progress
-- Issues encountered
-- Solutions / learnings
-- References (if any)
+- `report.pdf` (main report - required)
+- `report_<topic>.pdf` (optional readable version)
+- `source_code/` (code, configs, scripts)
+- `notes.md` (optional)
 
 ---
 
-### 2. 💻 Source Code / Artifacts
+## 🧠 Thesis-Oriented Reporting (IMPORTANT)
 
-Folder:
-```
-source_code/
-```
+Each weekly report is a **part of the final thesis**.
 
-Includes:
-
-- Code
-- Scripts
-- Config files
-- Logs (if relevant)
+### Mapping:
+- Week 1–2 → Introduction / Background
+- Week 3–6 → Methodology / System Design
+- Week 7–9 → Implementation / Experiments
+- Week 10+ → Evaluation / Conclusion
 
 ---
 
-### 3. 📝 Notes (Optional but Recommended)
+## 📘 Weekly Report Template (MUST FOLLOW)
 
-File:
-```
-notes.md
-```
+### 1. Contribution to Thesis
+- Chapter:
+- Section:
 
-Used for:
+### 2. Objective of This Week
+- ...
 
-- Quick notes
-- Debug logs
-- Extra explanations
+### 3. Detailed Work
+#### 3.1 Description
+#### 3.2 Design / Method
+#### 3.3 Implementation
 
----
+### 4. Results / Output
 
-## 📁 Example Repository Structure
+### 5. Analysis
 
-```
-repository/
-│
-├── tran-van-a/
-│   ├── week1_27-03-2026/
-│   │   ├── report.pdf
-│   │   ├── source_code/
-│   │   └── notes.md
-│   │
-│   ├── week2_03-04-2026/
-│       ├── report.pdf
-│       ├── source_code/
-│       └── notes.md
-```
+### 6. Issues & Fixes
+
+### 7. Draft Content for Thesis ⭐ (REQUIRED)
+- Write 1–2 pages formal academic content
+- This will be reused in thesis
+
+### 8. Next Step
 
 ---
 
 ## 🔄 Workflow
 
-### Step 1: Update repository
-
 ```
 git checkout main
 git pull origin main
-```
-
-### Step 2: Switch to your branch
-
-```
 git checkout <your-branch>
-```
-
-### Step 3: Add your work
-
-```
 git add .
-```
-
-### Step 4: Commit
-
-```
-git commit -m "week X: add report"
-```
-
-### Step 5: Push
-
-```
+git commit -m "week X: report"
 git push origin <your-branch>
 ```
 
 ---
 
-## 🚀 Submission Process (Recommended)
+## 🚀 Submission Process
 
-- Create a **Pull Request (PR)** from your branch → `main`
-- Title format:
+- Create Pull Request → main
+- Title:
 ```
-[Week X] Full Name Report
-```
-
-Example:
-```
-[Week 1] Tran Van A Report
+[Week X] Full Name - Topic
 ```
 
 ---
 
 ## ⚠️ Important Notes
 
-- ❌ No direct commits to `main`
-- ❌ No missing report files
-- ❌ No wrong folder naming
-- ❌ No empty source_code folder
+- ❌ No direct commit to main
+- ❌ Missing report → reject
+- ❌ Wrong format → reject
 
-- ✅ Keep commits clean
-- ✅ Follow structure strictly
-- ✅ Submit before deadline
+- ✅ Must include "Draft Content for Thesis"
+- ✅ Follow naming strictly
 
 ---
 
-## ✅ Submission Checklist
+## ✅ Checklist
 
-- [ ] Correct branch name
-- [ ] Correct week folder name
-- [ ] Added `report.pdf`
-- [ ] Added `source_code/`
-- [ ] Pushed to GitHub
-- [ ] Created Pull Request
-
----
-
-## 📬 Support
-
-If you encounter issues:
-
-- Contact your supervisor
-- Or open an issue in this repository
+- [ ] Correct branch
+- [ ] Correct folder name
+- [ ] Report file named correctly
+- [ ] Contains thesis draft section
+- [ ] Pushed & PR created
 
 ---
 
-## 🏁 Final Notes
+## 🏁 Final Note
 
-This repository reflects your **learning progress and discipline**.
+Weekly Report = Thesis Building Block
 
-Make sure your work is:
-- Clear
-- Organized
-- Reproducible
+If done correctly:
+👉 No need to write thesis from scratch later
 
 ---
 
