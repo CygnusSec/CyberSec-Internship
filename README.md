@@ -126,7 +126,103 @@ Each weekly report should be written in a way that:
 
 ---
 
-## 🔄 Workflow
+## 🐙 GitHub Issue Workflow (REQUIRED)
+
+To ensure clear communication and tracking, all tasks must be managed via **GitHub Issues**.
+
+### 📌 1. Each Task = One Issue
+
+Every task must be created as a separate issue.
+
+#### Naming format:
+```
+[Week X] <topic> - <short description>
+```
+
+#### Examples:
+```
+[Week 2] IDS - Setup Wazuh agent
+[Week 3] API Testing - Scan crAPI
+```
+
+---
+
+### 📄 2. Issue Template
+
+Each issue must follow this structure:
+
+```
+## 📌 Description
+What is this task about?
+
+## 🎯 Objective
+-
+
+## 📂 Expected Output
+-
+
+## 🛠 Tools / Tech
+-
+
+## ⏱ Deadline
+-
+
+## 🔗 Related
+- Report folder:
+- PR:
+
+## 📝 Notes
+-
+```
+
+---
+
+### 👤 3. Assignment & Labels
+
+- Assign the issue to the responsible person
+- Use labels such as:
+  - `week1`, `week2`
+  - `api`, `ids`, `nginx`
+  - `review`, `urgent`
+
+---
+
+### 🔄 4. Workflow
+
+#### Intern:
+
+- Update progress via comments:
+```
+Day 1: ...
+Day 2: ...
+```
+
+- When done:
+```
+- Done
+- PR: #<number>
+- Report: <folder>
+```
+
+- Close the issue
+
+---
+
+### 🔗 5. Linking (IMPORTANT)
+
+#### In commit:
+```
+git commit -m "week X: <task> (#issue_number)"
+```
+
+#### In PR:
+```
+Closes #issue_number
+```
+
+---
+
+## 🔄 Workflow (Git)
 
 ```
 git checkout main
@@ -154,9 +250,10 @@ git push origin <your-branch>
 - ❌ No direct commit to main
 - ❌ Missing report → reject
 - ❌ Wrong format → reject
+- ❌ No issue tracking → reject
 
 - ✅ Must include "Reusable Content"
-- ✅ Follow naming strictly
+- ✅ Must link issue ↔ PR ↔ report
 
 ---
 
@@ -166,6 +263,8 @@ git push origin <your-branch>
 - [ ] Correct folder name
 - [ ] Report file named correctly
 - [ ] Contains reusable content section
+- [ ] Issue created and updated
+- [ ] PR linked to issue
 - [ ] Pushed & PR created
 
 ---
