@@ -73,7 +73,7 @@ Each weekly folder MUST include:
 
 File name:
 ```
-report.pdf
+report_<topic>_<keyword>.pdf
 ```
 
 Content must include:
