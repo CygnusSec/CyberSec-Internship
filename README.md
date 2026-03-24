@@ -16,11 +16,10 @@ This repository is used to manage and track weekly progress reports for all memb
 
 - Each member must create their **own branch** from the main repository.
 - Branch naming convention:
-
-<your-full-name>
+your-full-name
 
 Example:
-Tran-Van-Ah
+Tran-Van-A
 
 ---
 
