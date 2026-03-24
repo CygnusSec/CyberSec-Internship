@@ -8,7 +8,7 @@ This repository is used to manage, track, and review weekly progress reports for
 
 - Ensure consistent **weekly reporting**
 - Track individual progress via **GitHub**
-- Enable **progressive thesis writing** (weekly reports → final thesis)
+- Build structured content that can be combined into a final report
 
 ---
 
@@ -17,7 +17,7 @@ This repository is used to manage, track, and review weekly progress reports for
 - Each member must submit **exactly ONE report per week**
 - All submissions must be pushed to **GitHub**
 - Follow **naming conventions strictly**
-- Each report must contribute to the **final thesis**
+- Each report should be written in a **clear and reusable format**
 
 ---
 
@@ -85,23 +85,24 @@ Each weekly folder MUST include:
 
 ---
 
-## 🧠 Thesis-Oriented Reporting (IMPORTANT)
+## 🧠 Structured Reporting (IMPORTANT)
 
-Each weekly report is a **part of the final thesis**.
+Each weekly report should be written in a way that:
 
-### Mapping:
-- Week 1–2 → Introduction / Background
-- Week 3–6 → Methodology / System Design
-- Week 7–9 → Implementation / Experiments
-- Week 10+ → Evaluation / Conclusion
+- Can stand alone as a weekly progress report
+- Can be **combined later into a final report/document**
+
+👉 This means:
+- Write clearly and formally
+- Avoid personal/journal-style writing
+- Focus on reusable technical content
 
 ---
 
 ## 📘 Weekly Report Template (MUST FOLLOW)
 
-### 1. Contribution to Thesis
-- Chapter:
-- Section:
+### 1. Contribution Scope
+- What part of the project this week contributes to
 
 ### 2. Objective of This Week
 - ...
@@ -117,9 +118,9 @@ Each weekly report is a **part of the final thesis**.
 
 ### 6. Issues & Fixes
 
-### 7. Draft Content for Thesis ⭐ (REQUIRED)
-- Write 1–2 pages formal academic content
-- This will be reused in thesis
+### 7. Reusable Content ⭐ (REQUIRED)
+- Write 1–2 pages in clear, formal style
+- This section should be reusable in final documentation
 
 ### 8. Next Step
 
@@ -154,7 +155,7 @@ git push origin <your-branch>
 - ❌ Missing report → reject
 - ❌ Wrong format → reject
 
-- ✅ Must include "Draft Content for Thesis"
+- ✅ Must include "Reusable Content"
 - ✅ Follow naming strictly
 
 ---
@@ -164,17 +165,17 @@ git push origin <your-branch>
 - [ ] Correct branch
 - [ ] Correct folder name
 - [ ] Report file named correctly
-- [ ] Contains thesis draft section
+- [ ] Contains reusable content section
 - [ ] Pushed & PR created
 
 ---
 
 ## 🏁 Final Note
 
-Weekly Report = Thesis Building Block
+Weekly reports are building blocks.
 
-If done correctly:
-👉 No need to write thesis from scratch later
+If written properly:
+👉 They can be combined later into a complete final document
 
 ---
 
