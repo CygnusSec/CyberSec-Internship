@@ -139,12 +139,6 @@ Every task must be created as a separate issue.
 [Week X] <topic> - <short description>
 ```
 
-#### Examples:
-```
-[Week 2] IDS - Setup Wazuh agent
-[Week 3] API Testing - Scan crAPI
-```
-
 ---
 
 ### 📄 2. Issue Template
@@ -177,7 +171,45 @@ What is this task about?
 
 ---
 
-### 👤 3. Assignment & Labels
+### 📊 3. Work Log (REQUIRED)
+
+All students MUST update progress directly in the issue using comments.
+
+#### 🔥 Format (mandatory):
+
+```
+### 📅 Day X (dd-mm)
+
+Time spent: Xh
+
+Work done:
+- 
+
+Result:
+- 
+
+Issue:
+- 
+
+Next:
+- 
+```
+
+#### ❗ Rules:
+
+- MUST update every 1–2 days
+- MUST create new comment (do NOT edit old ones)
+- MUST include all fields
+
+#### ❌ Invalid examples:
+
+```
+Did research
+```
+
+---
+
+### 👤 4. Assignment & Labels
 
 - Assign the issue to the responsible person
 - Use labels such as:
@@ -187,17 +219,14 @@ What is this task about?
 
 ---
 
-### 🔄 4. Workflow
+### 🔄 5. Workflow
 
 #### Intern:
 
-- Update progress via comments:
-```
-Day 1: ...
-Day 2: ...
-```
-
+- Update work log regularly
+- Move card on Project Board
 - When done:
+
 ```
 - Done
 - PR: #<number>
@@ -208,7 +237,7 @@ Day 2: ...
 
 ---
 
-### 🔗 5. Linking (IMPORTANT)
+### 🔗 6. Linking (IMPORTANT)
 
 #### In commit:
 ```
@@ -251,6 +280,7 @@ git push origin <your-branch>
 - ❌ Missing report → reject
 - ❌ Wrong format → reject
 - ❌ No issue tracking → reject
+- ❌ No work log → reject
 
 - ✅ Must include "Reusable Content"
 - ✅ Must link issue ↔ PR ↔ report
@@ -264,6 +294,7 @@ git push origin <your-branch>
 - [ ] Report file named correctly
 - [ ] Contains reusable content section
 - [ ] Issue created and updated
+- [ ] Work log updated
 - [ ] PR linked to issue
 - [ ] Pushed & PR created
 
@@ -278,4 +309,4 @@ If written properly:
 
 ---
 
-Happy coding 🚀
+Happy researching 🚀
