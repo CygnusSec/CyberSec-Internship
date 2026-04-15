@@ -1,0 +1,142 @@
+\documentclass[12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage{times}
+\usepackage{setspace}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\geometry{
+    top=2.5cm,
+    bottom=2.5cm,
+    left=3cm,
+    right=2cm
+}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\onehalfspacing
+
+\begin{document}
+\section{Theoretical Background of Model Context Protocol}
+
+\subsection{Motivation and Design Rationale}
+
+In the era of rapid advancement in Artificial Intelligence (AI), major technology organizations are increasingly investing in the development of Large Language Models (LLMs) to support human decision-making, particularly in the field of Information Technology and Cybersecurity. However, the prevailing interaction paradigm remains largely limited to a question–answer mechanism, which fails to fully leverage the contextual reasoning capabilities of AI systems. This limitation often results in inaccurate or suboptimal outputs due to insufficient or poorly structured input context.
+
+Furthermore, most LLMs operate in relatively isolated environments, constrained by static training datasets and lacking the ability to directly interact with real-time data sources or external tools. Integrating new data sources typically requires custom-built connectors, leading to architectural fragmentation and poor scalability. This issue becomes increasingly problematic in complex cybersecurity environments, where systems such as SIEM, SOAR, and threat intelligence platforms must be continuously integrated and updated.
+
+To address these challenges, Anthropic introduced the Model Context Protocol, MCP is defined as a standardized framework designed to unify the interaction between AI models and external data sources or tools. MCP enables dynamic context injection and tool utilization, allowing AI systems to generate more accurate and context-aware responses.
+
+The design philosophy of MCP is inspired by the modular architecture of the Language Server Protocol (LSP), emphasizing a clear separation between \textit{intelligence} (LLMs) and \textit{context} (data and tools). In traditional architectures, integrating $N$ models with $M$ data sources results in $N \times M$ custom adapters, significantly increasing system complexity. MCP transforms this integration model into a scalable $N + M$ architecture, thereby reducing development overhead and improving extensibility.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/684d85104a92d4b888f7d6c1_682340f34e39b1d09d0bbb15_MCP_fig2.png}
+    \caption{Comparison between traditional $N \times M$ integration and MCP's $N + M$ architecture.}
+    \label{fig:mcp_scalability}
+\end{figure}
+
+\subsection{Architecture and Core Components}
+
+The Model Context Protocol is designed as a layered and modular architecture, enabling independent development, scalability, and maintainability of each component. This architectural separation ensures that system upgrades or modifications can be performed without disrupting the overall infrastructure.
+
+At the top layer, the \textbf{MCP Host} acts as the central orchestrator. It is responsible for managing AI agent workflows, controlling access permissions, and presenting analytical results to security operators. In the context of this project, the Host serves as the control plane for automated incident response.
+
+The \textbf{MCP Client} functions as an intermediary communication layer. It maintains persistent connections with MCP Servers and performs capability negotiation to ensure compatibility. Additionally, the Client translates AI-generated requests into standardized JSON-RPC messages.
+
+At the lower layer, \textbf{MCP Servers} encapsulate specific data sources or tools as lightweight wrappers. These servers process incoming requests and interact directly with backend systems such as SIEM platforms, databases, or monitoring tools. The communication between Client and Server is implemented using JSON-RPC 2.0, supporting multiple transport mechanisms including STDIO for low-latency local communication and Server-Sent Events (SSE) over HTTP for distributed deployments.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/684d85104a92d4b888f7d6b8_6823411ebc4baa01f1d986d6_MCP_fig3.png}
+    \caption{Layered architecture of Model Context Protocol including Host, Client, and Server components.}
+    \label{fig:mcp_architecture}
+\end{figure}
+
+\subsection{Capability Negotiation and Connection Lifecycle}
+
+A critical feature of MCP is the capability negotiation mechanism, which ensures compatibility between Clients and Servers during connection initialization.
+
+The process begins with an \texttt{initialize} request sent from the Client to the Server. This request includes the protocol version and a list of supported capabilities. The Server then responds with its own capabilities, indicating available features such as resource subscriptions or tool execution.
+
+The connection is established only after both parties agree on a shared subset of capabilities. A final \texttt{initialized} notification confirms that the session is ready for operation.
+
+This adaptive negotiation mechanism ensures backward compatibility and system stability, allowing components with different versions to interoperate effectively.
+
+
+\subsection{MCP as an Intelligent Agent Framework}
+
+Model Context Protocol extends traditional function calling into a stateful, bidirectional interaction model, transforming LLMs from passive text processors into active intelligent agents.
+
+This transformation is achieved through a set of primitives:
+
+\textbf{Server-side primitives}:
+\begin{itemize}
+    \item \textbf{Resources}: Provide contextual data such as logs, configurations, and system states.
+    \item \textbf{Tools}: Enable actionable operations such as isolating endpoints or blocking malicious IPs.
+    \item \textbf{Prompts}: Standardize investigation workflows.
+\end{itemize}
+
+\textbf{Client-side primitives}:
+\begin{itemize}
+    \item \textbf{Sampling}: Allows Servers to request additional AI inference.
+    \item \textbf{Elicitation}: Enables user interaction for approval or additional input.
+\end{itemize}
+
+Together, these primitives enable AI agents to perceive, reason, and act within real-world cybersecurity environments.
+
+
+\subsection{Applications in Log Normalization and OCSF Mapping}
+
+One of the major challenges in cybersecurity is the heterogeneity of log formats across different systems. MCP addresses this issue by enabling standardized data processing at the Server level.
+
+Logs from various sources can be normalized into common schemas such as the Open Cybersecurity Schema Framework (OCSF), allowing AI models to perform consistent analysis and correlation across multiple data streams.
+
+This capability can improve threat detection accuracy and supports more efficient incident response workflows.
+\subsection{Dynamic Tool Discovery and Context Optimization}
+
+In large-scale cybersecurity systems, the number of available tools and services can grow significantly, making it inefficient to include all tool descriptions within the context window of a Large Language Model (LLM). Excessive context loading not only increases computational overhead but also degrades response accuracy and latency.
+
+To address this issue, MCP introduces a dynamic tool discovery mechanism, also known as search-based discovery. Instead of loading all available tools into the model context, the MCP Host selectively retrieves only the most relevant tools based on the current query or task. This selective loading strategy improves efficiency and scalability of context management.
+
+This approach is particularly beneficial in Security Operations Center (SOC) environments, where dozens of MCP Servers may expose hundreds of tools. By dynamically selecting relevant tools, the system ensures scalability without overwhelming the AI agent.
+
+In parallel, MCP supports a \textit{Code Mode} execution paradigm, allowing AI agents to generate and execute scripts (e.g., Python or TypeScript) within a controlled sandbox environment. Instead of processing large datasets directly through the LLM, data-intensive operations such as filtering, aggregation, and correlation are executed locally on the MCP Server.
+
+This architectural shift minimizes data transfer, reduces latency, and enhances privacy by ensuring that sensitive data remains within the local infrastructure.
+
+\subsection{Security and Governance Mechanisms}
+
+Despite its powerful capabilities, MCP incorporates multiple security and governance mechanisms to ensure safe and controlled operation within sensitive environments.
+
+One of the core mechanisms is \textit{On-Behalf-Of (OBO) Execution}, which binds the permissions of the AI agent directly to the permissions of the authenticated user. This ensures that the AI cannot perform actions beyond the authority of the user, thereby preventing privilege escalation.
+
+Additionally, MCP enforces a Zero Trust model through its initialization handshake process. During capability negotiation, each MCP Server explicitly declares its permissions, distinguishing between read-only operations (Resources) and state-changing actions (Tools). This strict separation prevents unauthorized modifications to critical systems.
+
+In Code Mode, MCP introduces secure bindings to protect sensitive credentials such as API keys. These bindings ensure that secrets are never exposed to the LLM, even during execution. All sensitive operations are handled within a sandboxed environment, minimizing the risk of data leakage.
+
+Furthermore, MCP supports secure user interaction through mechanisms such as Elicitation and external authentication flows. For example, sensitive inputs such as passwords or one-time passwords (OTP) can be collected through secure web interfaces rather than being directly processed by the AI model.
+
+These combined mechanisms establish a robust security foundation, making MCP suitable for deployment in high-risk cybersecurity environments.
+
+\subsection{Role of MCP in the Proposed System}
+
+In this project, Model Context Protocol plays a central role in enabling automated vulnerability analysis and post-incident remediation.
+
+MCP acts as a bridge between the AI agent and the underlying cybersecurity infrastructure, allowing seamless integration between data collection, analysis, and execution phases.
+
+During the detection phase, MCP facilitates data acquisition through Resources, enabling the AI agent to access real-time information such as Wazuh alerts, system logs, and application source code. These data sources provide the contextual foundation for identifying exploited vulnerabilities.
+
+In the analysis phase, the AI agent processes this contextual information to determine the root cause of the incident and generate appropriate remediation strategies.
+
+In the execution phase, MCP transitions into an active role by invoking Tools to implement corrective actions. These actions may include patching vulnerable code, updating firewall rules, or isolating compromised endpoints.
+
+To ensure safety and control, a human-in-the-loop mechanism is integrated using Elicitation. Before executing critical actions, the system sends approval requests to administrators (e.g., via Telegram). Only after receiving explicit approval are remediation actions applied.
+
+Additionally, the system leverages dynamic tool discovery to optimize context usage and employs secure execution environments to protect sensitive data.
+
+Through this integration, MCP enables the development of a scalable, secure, and automated incident response system that significantly reduces response time while maintaining strict operational control.
+
+
+\end{document}
