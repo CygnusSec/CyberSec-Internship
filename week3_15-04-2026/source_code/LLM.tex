@@ -1,0 +1,78 @@
+\documentclass[12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage{times}
+\usepackage{setspace}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\geometry{
+    top=2.5cm,
+    bottom=2.5cm,
+    left=3cm,
+    right=2cm
+}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\onehalfspacing
+
+\begin{document}
+\section{Artificial Intelligence in SOAR Systems}
+
+\subsection{Evolution from Traditional SOAR to AI-driven Automation}
+
+The increasing volume and sophistication of cyber threats have placed significant pressure on modern Security Operations Centers (SOCs), particularly in alert triage, false positive reduction, and incident response. Traditional Security Orchestration, Automation, and Response (SOAR) platforms, such as Splunk SOAR and Cortex XSOAR, primarily rely on predefined and static playbooks to automate response workflows. While effective for known attack patterns, these systems lack the flexibility to adapt to evolving threats and complex attack chains.
+
+In recent years, the emergence of Large Language Models (LLMs) has introduced a new paradigm in cybersecurity automation. Models such as Claude, developed by Anthropic, have evolved from simple conversational tools into advanced reasoning systems capable of understanding context, performing multi-step analysis, and interacting with external systems. When integrated into SOAR environments, these models enable a transition from rule-based automation to intelligent, context-aware decision-making.
+
+This shift gives rise to AI-driven hyper-automation, where AI agents not only execute predefined actions but also dynamically analyze situations, generate responses, and coordinate multiple tools to handle incidents in real time. As a result, the overall incident response process can be significantly accelerated while maintaining analytical depth.
+
+\subsection{Reasoning Capabilities of LLM-based Agents}
+
+A fundamental advantage of LLM-based agents in cybersecurity is their ability to perform contextual reasoning across heterogeneous data sources. Unlike traditional rule-based systems, which operate on fixed patterns, LLMs can analyze unstructured data such as logs, alerts, and source code to derive meaningful insights.
+
+In the context of vulnerability analysis, AI agents are capable of identifying suspicious code regions, reasoning about potential exploit scenarios, and proposing remediation strategies. This process involves understanding both syntactic structures and semantic relationships within the application, allowing the model to detect vulnerabilities that depend on execution context.
+
+Furthermore, these models incorporate knowledge from established security standards, such as OWASP and the NIST Secure Software Development Framework (SSDF), enabling them to align their analysis with recognized best practices in secure software development.
+
+\subsection{Multi-step Reasoning and Iterative Refinement}
+
+Cybersecurity tasks often involve complex problem-solving that cannot be addressed through a single inference step. LLM-based agents overcome this limitation through multi-step reasoning, where decisions are made iteratively based on intermediate results.
+
+This process can be conceptualized as a continuous cycle consisting of perception, reasoning, planning, action, and observation. At each stage, the agent refines its understanding of the problem and adjusts its strategy accordingly.
+
+In practical scenarios, generated outputs such as remediation code can be evaluated within controlled environments, allowing the system to identify errors and refine the solution iteratively. This feedback-driven refinement process enhances overall accuracy and robustness, particularly in tasks involving code generation or system configuration.
+
+\subsection{Tool Integration and Context-aware Execution}
+
+A key capability of AI-driven SOAR systems is the ability to interact with external tools and data sources. Rather than relying solely on internal knowledge, AI agents can dynamically invoke tools to retrieve real-time information or perform specific actions.
+
+This interaction is typically guided by the agent’s understanding of available system capabilities, including input requirements and expected outputs. By leveraging external tools, the agent can enrich its contextual understanding and reduce reliance on static training data.
+
+In cybersecurity environments, this enables tasks such as threat intelligence enrichment, log analysis, and automated response execution. The integration of tool-based interaction significantly improves the reliability of AI-generated decisions and helps mitigate the risk of hallucination.
+
+\subsection{Challenges and Limitations of AI in SOAR Systems}
+
+Despite the significant advantages of integrating Large Language Models (LLMs) into SOAR systems, several challenges remain that limit their reliability in real-world cybersecurity environments. One of the most critical issues is hallucination, where the model generates plausible but incorrect information. In the context of incident response, such inaccuracies may lead to incorrect remediation actions or failure to detect actual threats, potentially causing severe operational consequences.
+
+Another limitation arises from the inherent complexity of cybersecurity workflows, which often involve long-running investigations and the correlation of data from multiple heterogeneous sources. Although modern LLMs support large context windows, continuously processing extensive historical data is inefficient and may introduce noise, thereby degrading reasoning quality. This challenge is particularly evident in SOC environments, where maintaining consistent situational awareness across multiple stages of an investigation is essential.
+
+In addition, LLM-based systems operate based on probabilistic inference rather than deterministic logic, which introduces uncertainty in decision-making. This lack of determinism raises concerns regarding reliability and predictability, especially in high-risk environments where incorrect actions can directly impact system availability and security.
+
+\subsection{Reliability, Trust, and Mitigation Strategies}
+
+To mitigate the limitations of Large Language Models, particularly hallucination and uncertainty in reasoning, modern AI systems have incorporated several improvements at both the model and training levels.
+
+One fundamental approach is the enhancement of reasoning capabilities through training techniques that encourage structured and step-by-step inference. Instead of generating direct answers, models are optimized to internally decompose problems, allowing them to produce more consistent and logically coherent outputs. This is particularly important in cybersecurity scenarios such as vulnerability analysis or incident investigation, where incorrect reasoning may lead to ineffective incident response or misclassification of threats.
+
+In addition, model developers such as Anthropic have introduced safety-oriented training methodologies, including Constitutional AI, which embeds behavioral constraints directly into the model. This approach allows the system to self-regulate its outputs based on predefined principles, reducing the risk of generating harmful or misleading information without relying solely on external filtering mechanisms.
+
+Another important improvement lies in the model's ability to interact with external information sources through structured external interfaces such as APIs and integrated tools. Rather than relying entirely on static knowledge acquired during training, the model can retrieve up-to-date and context-specific information when necessary. This capability enhances factual accuracy and reduces hallucination, particularly in dynamic environments such as cybersecurity, where real-time data plays a critical role.
+
+Furthermore, modern LLMs are designed to provide more transparent reasoning by generating intermediate explanations or justifications for their outputs. This allows human operators to better understand the decision-making process and verify the correctness of the results, thereby increasing trust in AI-assisted workflows.
+
+Despite these advancements, LLMs remain inherently probabilistic systems. Therefore, their outputs must still be interpreted with caution, and human oversight continues to play an essential role in ensuring the reliability of AI-driven cybersecurity operations.
+
+These mechanisms collectively contribute to improving the reliability and practical applicability of AI-driven SOAR systems in real-world cybersecurity environments.
+\end{document}
