@@ -75,4 +75,18 @@ Furthermore, modern LLMs are designed to provide more transparent reasoning by g
 Despite these advancements, LLMs remain inherently probabilistic systems. Therefore, their outputs must still be interpreted with caution, and human oversight continues to play an essential role in ensuring the reliability of AI-driven cybersecurity operations.
 
 These mechanisms collectively contribute to improving the reliability and practical applicability of AI-driven SOAR systems in real-world cybersecurity environments.
+
+\subsection{Role of AI in the Proposed System}
+
+In this project, Claude AI serves as the intelligence engine of the automated incident response system. Unlike traditional rule-based security workflows, AI is responsible for technical reasoning, vulnerability analysis, and decision-making in situations where predefined logic is not sufficient. It acts as a virtual security analyst rather than a simple chatbot.
+
+The first role of AI is vulnerability analysis. When Wazuh generates a security alert, Claude analyzes the alert data to identify the attack type, such as SQL Injection or Remote Code Execution. It then uses MCP to access the real source code of the target application and determine the exact vulnerable logic. By connecting attack indicators with application behavior, the AI identifies the root cause of the vulnerability.
+
+The second role is self-directed knowledge seeking. If one source file is not enough for accurate remediation, the AI proactively requests additional files such as configuration files, utility modules, or database-related code through the MCP Host and MCP Server. This process continues until sufficient context is collected for safe patch generation.
+
+The third role is patch generation and self-correction. Based on the collected context, the AI generates a suitable patch and the MCP Host tests it inside the Docker sandbox. If the patch fails during validation, the returned error is sent back to the AI for further reasoning and improvement. This iterative loop continues until a stable and valid patch is produced.
+
+The final role is safe execution. Before deployment, the AI performs a final consistency check by reading the latest production file again to avoid unexpected conflicts. After administrator approval, it uses the MCP Server to apply the validated patch securely.
+
+Therefore, AI is not only responsible for analysis, but also for reasoning, adaptation, and secure remediation, making it the decision-making core of the proposed system.
 \end{document}

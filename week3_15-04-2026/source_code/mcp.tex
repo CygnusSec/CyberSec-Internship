@@ -102,7 +102,7 @@ To address this issue, MCP introduces a dynamic tool discovery mechanism, also k
 
 This approach is particularly beneficial in Security Operations Center (SOC) environments, where dozens of MCP Servers may expose hundreds of tools. By dynamically selecting relevant tools, the system ensures scalability without overwhelming the AI agent.
 
-In parallel, MCP supports a \textit{Code Mode} execution paradigm, allowing AI agents to generate and execute scripts (e.g., Python or TypeScript) within a controlled sandbox environment. Instead of processing large datasets directly through the LLM, data-intensive operations such as filtering, aggregation, and correlation are executed locally on the MCP Server.
+In parallel, MCP supports a \textit{Code Mode} execution paradigm, allowing AI agents to generate and execute scripts in Python or TypeScript within a controlled sandbox environment. Instead of processing large datasets directly through the LLM, data-intensive operations such as filtering, aggregation, and correlation are executed locally on the MCP Server.
 
 This architectural shift minimizes data transfer, reduces latency, and enhances privacy by ensuring that sensitive data remains within the local infrastructure.
 
@@ -122,21 +122,21 @@ These combined mechanisms establish a robust security foundation, making MCP sui
 
 \subsection{Role of MCP in the Proposed System}
 
-In this project, Model Context Protocol plays a central role in enabling automated vulnerability analysis and post-incident remediation.
+In this project, the Model Context Protocol (MCP) serves as the core communication framework that enables secure and structured interaction between the AI agent and the target system. Instead of allowing the AI model to directly access production resources, MCP provides a controlled architecture in which the Host manages orchestration while the Server performs execution on the target environment. This separation improves both security and operational reliability.
 
-MCP acts as a bridge between the AI agent and the underlying cybersecurity infrastructure, allowing seamless integration between data collection, analysis, and execution phases.
+The MCP Host, implemented as a Python-based controller, acts as the central orchestrator and decision-making layer of the entire SOAR workflow. It is responsible for aggregating all incident context, including security alerts collected from Wazuh and the vulnerable source code retrieved from the target system. This centralized context is then prepared and delivered to the Claude AI model for vulnerability analysis and patch generation.
 
-During the detection phase, MCP facilitates data acquisition through Resources, enabling the AI agent to access real-time information such as Wazuh alerts, system logs, and application source code. These data sources provide the contextual foundation for identifying exploited vulnerabilities.
+In addition, the Host coordinates the interaction between all major components of the system. It receives alerts from the SIEM layer, instructs the MCP Server to retrieve source code, sends analysis requests to the AI model, and manages the Docker sandbox used for patch validation. The Host also supervises the iterative self-correction loop by monitoring sandbox execution results. If the generated patch fails during testing, the Host forces the AI to reanalyze the issue and generate a revised patch, with the process repeating for a limited number of iterations.
 
-In the analysis phase, the AI agent processes this contextual information to determine the root cause of the incident and generate appropriate remediation strategies.
+From a security perspective, the MCP Host also functions as a gatekeeping mechanism. Through Telegram integration, it pauses the remediation workflow and waits for administrator approval before allowing deployment to the production system. This human-in-the-loop approach ensures that high-risk modifications are never applied without explicit authorization.
 
-In the execution phase, MCP transitions into an active role by invoking Tools to implement corrective actions. These actions may include patching vulnerable code, updating firewall rules, or isolating compromised endpoints.
+The MCP Server, deployed as a container on the target machine, acts as the execution layer and the direct interface to the production environment. It provides real system data by executing controlled operations such as reading source code files and extracting configuration information when requested by the Host or the AI agent. This allows the AI to analyze vulnerabilities using actual production context rather than incomplete assumptions.
 
-To ensure safety and control, a human-in-the-loop mechanism is integrated using Elicitation. Before executing critical actions, the system sends approval requests to administrators (e.g., via Telegram). Only after receiving explicit approval are remediation actions applied.
+After a patch is generated and approved, the MCP Server performs the final remediation step by replacing the vulnerable source code with the validated patched version. Before deployment, it also supports consistency verification by allowing the AI to re-read the production file one final time, ensuring that no unexpected changes occurred during the approval process.
 
-Additionally, the system leverages dynamic tool discovery to optimize context usage and employs secure execution environments to protect sensitive data.
+Furthermore, if the AI agent determines that additional information is required for accurate remediation, such as configuration files, utility modules, or supporting database logic, the MCP Server acts as an on-demand knowledge provider. This allows the AI to dynamically request missing context instead of generating unreliable assumptions.
 
-Through this integration, MCP enables the development of a scalable, secure, and automated incident response system that significantly reduces response time while maintaining strict operational control.
+Through this Host-Server architecture, MCP enables a secure, auditable, and context-aware remediation process, making it a critical foundation for the intelligent automated response system proposed in this project.
 
 
 \end{document}

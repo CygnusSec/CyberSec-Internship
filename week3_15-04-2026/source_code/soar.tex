@@ -1,0 +1,100 @@
+\documentclass[12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage{times}
+\usepackage{setspace}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\geometry{
+    top=2.5cm,
+    bottom=2.5cm,
+    left=3cm,
+    right=2cm
+}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\onehalfspacing
+
+\begin{document}
+\section{Theoretical Background of SOAR Systems}
+
+\subsection{Overview of Security Orchestration, Automation, and Response}
+
+Security Orchestration, Automation, and Response (SOAR) is a modern cybersecurity framework designed to improve the efficiency, consistency, and speed of incident handling within Security Operations Centers (SOCs). As organizations deploy an increasing number of security solutions such as SIEM, EDR, firewalls, endpoint monitoring systems, and threat intelligence platforms, security analysts are required to process a large volume of alerts and coordinate multiple tools simultaneously. Traditional manual operations often lead to delayed response, analyst fatigue, and inconsistent decision-making.
+
+SOAR addresses these limitations by providing a centralized platform that integrates security tools, automates repetitive operations, and supports rapid response to security incidents. This architecture is built upon three fundamental pillars: Orchestration, Automation, and Response. These three components work together to transform isolated security products into a unified and intelligent defense system.
+
+Rather than functioning as independent technologies, these pillars form a continuous operational cycle in which security data is collected, analyzed, and converted into practical defensive actions. This allows organizations to move from passive monitoring toward proactive and coordinated cyber defense.
+
+\subsection{The Role of Orchestration in SOAR Systems}
+
+Orchestration is the foundational layer of SOAR and is responsible for connecting heterogeneous security systems into a unified operational environment. In a typical enterprise infrastructure, security platforms often operate independently, creating fragmented visibility and forcing analysts to manually transfer information between systems. This significantly increases investigation time and creates operational inefficiencies.
+
+The orchestration function solves this problem by establishing standardized communication between platforms such as SIEM, endpoint detection and response systems, next-generation firewalls, identity management systems, and threat intelligence services. Through APIs, webhooks, and predefined connectors, SOAR enables these tools to exchange information automatically and operate as a coordinated ecosystem.
+
+For example, when a SIEM platform detects suspicious login behavior, orchestration allows the alert to be immediately forwarded to endpoint monitoring systems for host verification, while simultaneously querying threat intelligence services to validate the source IP address. Without orchestration, these tasks would require multiple manual steps performed by analysts.
+
+Therefore, orchestration serves as the structural backbone of SOAR, ensuring that all security components function together rather than as isolated tools. It provides centralized visibility, improves operational consistency, and establishes the foundation for further automation and response activities.
+
+\subsection{The Role of Automation in SOAR Systems}
+
+Automation represents the execution engine of SOAR and focuses on reducing manual effort by performing repetitive and time-consuming security tasks automatically. In traditional SOC environments, analysts spend a significant amount of time on routine operations such as collecting logs, enriching alerts, validating indicators of compromise, checking asset ownership, and preparing investigation reports.
+
+Although these tasks are essential, they do not require advanced decision-making and often create alert fatigue when performed repeatedly. Automation eliminates this inefficiency by executing predefined workflows without requiring continuous human intervention.
+
+For instance, when a suspicious email is detected, the system can automatically extract malicious URLs, attachments, sender information, and domain reputation data, then correlate these indicators with internal security logs and external threat intelligence sources. This enrichment process allows analysts to focus on higher-level investigation rather than basic information gathering.
+
+Automation also improves operational consistency because the same workflow is executed identically every time, reducing the risk of human error. This is especially important in environments where response quality must remain stable regardless of analyst workload or shift changes.
+
+As a result, automation significantly improves SOC productivity, reduces response latency, and enables security teams to handle larger incident volumes without proportional increases in human resources.
+
+\subsection{The Role of Response in SOAR Systems}
+
+Response is the action-oriented component of SOAR and represents the final stage where security analysis is translated into concrete defensive operations. Unlike traditional monitoring systems that only generate alerts, SOAR actively supports containment, mitigation, and remediation once a threat is confirmed.
+
+The response capability ensures that security incidents are handled quickly before they can escalate into larger compromises. Actions may include isolating infected endpoints, blocking malicious IP addresses through firewall rules, disabling compromised user accounts, quarantining malicious files, or initiating escalation procedures for critical incidents.
+
+For example, if endpoint detection systems identify ransomware behavior on a workstation, SOAR can immediately trigger endpoint isolation, prevent lateral movement, and notify administrators for approval of further remediation actions. This machine-speed response is significantly faster than traditional manual intervention, where analysts may require hours to investigate and act.
+
+However, not all response actions should be fully automated. High-risk operations involving production systems or privileged accounts often require human approval before execution. Therefore, modern SOAR platforms combine automated response with human-in-the-loop validation to maintain both speed and operational safety.
+
+Response is therefore the most visible outcome of SOAR, converting security intelligence into immediate and measurable defensive impact.
+
+\subsection{Alert Triage and Incident Response Workflow}
+
+The three pillars of SOAR operate together within the incident response lifecycle. This process begins with alert ingestion from multiple monitoring sources such as SIEM, EDR, and network security devices. Once alerts are received, orchestration ensures that relevant systems are connected and contextual data can be retrieved from different sources.
+
+Automation then performs initial validation and enrichment by collecting additional information such as user behavior history, asset criticality, authentication logs, and external threat intelligence. This enriched context improves analytical accuracy and helps determine whether the alert represents a genuine threat or a false positive.
+
+Following this stage, the system prioritizes alerts based on severity and business impact. High-risk incidents involving critical assets or privileged accounts receive immediate attention. Finally, the response phase determines the appropriate action, which may involve escalation, containment, remediation, or continuous monitoring.
+
+This workflow significantly reduces analyst workload while improving both speed and reliability in incident handling.
+
+\subsection{Relationship Between SOAR and SIEM}
+
+SOAR operates closely with Security Information and Event Management (SIEM) systems, and the relationship between these two technologies is fundamental to modern security operations. Although both systems are used in SOC environments, they serve different but complementary purposes.
+
+SIEM primarily focuses on collecting, storing, and analyzing security logs from across the infrastructure. Its primary objective is threat detection, anomaly identification, and compliance monitoring. SIEM acts as the visibility layer of the security architecture by identifying suspicious events and generating alerts.
+
+SOAR extends this capability by transforming those alerts into coordinated response actions. Once SIEM detects suspicious behavior, SOAR consumes the alert, enriches the context, executes playbooks, and initiates remediation processes across multiple integrated platforms.
+
+In simple terms, SIEM functions as the detection engine, while SOAR serves as the operational response engine. SIEM identifies what is happening, and SOAR determines what should be done next. The integration of these two systems creates a complete end-to-end security workflow from detection to remediation.
+
+\subsection{Role of SOAR in the Proposed System}
+
+In this project, SOAR serves as the central operational layer that coordinates the entire automated incident response process. It functions as the core system that connects independent security tools into a unified workflow, transforming isolated detection and remediation tasks into a seamless and intelligent security operation.
+
+From the orchestration perspective, SOAR acts as the bridge between monitoring platforms, AI-based analysis, and execution mechanisms. It receives security alerts from the Wazuh Manager and transfers the relevant context to the Claude AI agent for vulnerability analysis and remediation planning. At the same time, it controls the MCP Server to perform file operations on the target machine, including reading vulnerable source code and deploying patched files. In addition, SOAR manages the Docker-based sandbox environment, where temporary testing containers are created and removed automatically for patch validation.
+
+From the automation perspective, SOAR eliminates the need for manual execution of repetitive security tasks. Once an alert is generated, the system automatically collects contextual information and retrieves the corresponding source code without requiring analyst intervention. It also supports an iterative self-correction mechanism, where generated patches are tested inside the sandbox environment. If the patch fails during validation, the system automatically re-initiates the analysis process and requests the AI agent to generate an improved version. This loop continues for a limited number of iterations until a valid patch is produced. After administrator approval, SOAR automatically executes the deployment process by replacing the vulnerable source code with the validated patched version.
+
+From the response perspective, SOAR significantly reduces the Mean Time To Respond (MTTR) by accelerating containment and remediation while maintaining operational safety. The use of sandbox validation ensures that patches are tested before deployment, minimizing the risk of system disruption in the production environment. Furthermore, a human-in-the-loop mechanism is implemented through Telegram integration, allowing administrators to approve or reject remediation actions remotely and in real time. The system also automatically generates reports and logs regarding detected vulnerabilities, patching results, and remediation status, supporting auditing and operational management.
+
+Through these capabilities, SOAR becomes the operational core of the proposed system, enabling secure, scalable, and intelligent automated incident response rather than relying solely on traditional manual security operations.
+
+
+
+
+\end{document}
