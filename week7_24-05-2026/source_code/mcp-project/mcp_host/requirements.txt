@@ -1,0 +1,6 @@
+mcp
+httpx
+anthropic
+numpy
+requests
+pydantic

@@ -1,0 +1,107 @@
+services:
+
+  #################################################
+  # MCP COLLECTOR SERVER
+  #################################################
+
+  collector_server:
+    build:
+      context: ./mcp_servers/collector_server
+      dockerfile: Dockerfile
+    container_name: mcp_collector_server
+    networks:
+      - backend_net
+    ports:
+      - "8101:8000"
+    volumes:
+      - /home/kali/my-lab/infra/volumes/shared_logs/dvwa:/shared_logs:ro
+
+    restart: unless-stopped
+
+  #################################################
+  # MCP TRANSLATOR SERVER
+  #################################################
+
+  translator_server:
+    build:
+      context: ./mcp_servers/translator_server
+      dockerfile: Dockerfile
+    container_name: mcp_translator_server
+    networks:
+      - backend_net
+    ports:
+      - "8102:8000"
+    restart: unless-stopped
+
+  #################################################
+  # MCP CORRELATOR SERVER
+  #################################################
+
+  correlator_server:
+    build:
+      context: ./mcp_servers/correlator_server
+      dockerfile: Dockerfile
+    container_name: mcp_correlator_server
+    networks:
+      - backend_net
+    ports:
+      - "8103:8000"
+    restart: unless-stopped
+
+  #################################################
+  # MCP REASONING SERVER
+  #################################################
+
+  reasoning_server:
+    build:
+      context: ./mcp_servers/reasoning_server
+      dockerfile: Dockerfile
+    container_name: mcp_reasoning_server
+    networks:
+      - backend_net
+    ports:
+      - "8104:8000"
+    environment:
+      - AI_PROVIDER=groq
+      - AI_API_KEY=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
+
+
+    restart: unless-stopped
+
+  #################################################
+  # MCP RESPONSE SERVER
+  #################################################
+
+  response_server:
+    build:
+      context: ./mcp_servers/response_server
+      dockerfile: Dockerfile
+    container_name: mcp_response_server
+    networks:
+      - backend_net
+    ports:
+      - "8105:8000"
+    restart: unless-stopped
+
+  #################################################
+  # HOST ORCHESTRATOR
+  #################################################
+
+  soar_host:
+    build:
+      context: ./mcp_host
+      dockerfile: Dockerfile
+    container_name: mcp_soar_host
+    networks:
+      - backend_net
+    depends_on:
+      - collector_server
+      - translator_server
+      - correlator_server
+      - reasoning_server
+      - response_server
+    restart: unless-stopped
+
+networks:
+  backend_net:
+    external: true
