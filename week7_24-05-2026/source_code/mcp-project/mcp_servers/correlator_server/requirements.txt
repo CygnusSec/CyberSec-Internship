@@ -1,0 +1,7 @@
+fastmcp
+mcp
+fastapi
+uvicorn
+requests
+pydantic
+httpx
