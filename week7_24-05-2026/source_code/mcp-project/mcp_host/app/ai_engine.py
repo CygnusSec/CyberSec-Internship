@@ -5,7 +5,7 @@ from app.mcp_client import MCPClient
 class AIEngine:
 
     def __init__(self):
-        self.reasoning_mcp = MCPClient("http://reasoning_server:8000")
+        self.reasoning_mcp = MCPClient("http://reasoning_server:8000", timeout=180)
 
     async def analyze_attack_chain(self, behavior_sequence, session_id, source_ip):
         """Nhánh B — behavioral analysis, AI phán xét có đáng ngờ không."""

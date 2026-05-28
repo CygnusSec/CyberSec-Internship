@@ -1,10 +1,10 @@
 from fastmcp import FastMCP
 import subprocess
 import os
-import re
 import time
 import requests
 import urllib3
+from datetime import datetime, timezone, timedelta
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -14,10 +14,14 @@ WAZUH_URL  = os.environ.get("WAZUH_URL",  "https://wazuh.indexer:9200")
 WAZUH_USER = os.environ.get("WAZUH_USER", "admin")
 WAZUH_PASS = os.environ.get("WAZUH_PASS", "SecretPassword")
 
-# Web/container logs không cache — cần fresh data mỗi lần trigger
-# Wazuh cache 60s — API call tốn thời gian
 _cache: dict = {}
 _WAZUH_CACHE_TTL = 60
+
+_MONTH_MAP = {
+    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4,
+    "May": 5, "Jun": 6, "Jul": 7, "Aug": 8,
+    "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
+}
 
 
 def _cache_get(key: str):
@@ -49,58 +53,153 @@ def parse_lines(raw: str, source: str) -> list[dict]:
     return [{"source": source, "raw": line} for line in raw.split("\n") if line.strip()]
 
 
-def tail_lines(raw: str, n: int = 20) -> str:
+def _parse_log_ts(ts_str: str):
+    """
+    Parse log timestamp string thành datetime.
+    Format: "16/May/2026:09:00:00 +0000"
+    Dùng datetime thay vì string compare để đúng qua các tháng khác nhau.
+    """
+    try:
+        ts    = ts_str.split(" ")[0]  # bỏ timezone offset
+        day, mon_str, rest = ts.split("/")
+        year, hour, minute, second = rest.split(":")
+        month = _MONTH_MAP.get(mon_str, 0)
+        if not month:
+            return None
+        return datetime(int(year), month, int(day),
+                        int(hour), int(minute), int(second))
+    except Exception:
+        return None
+
+
+def filter_since(lines: list[str], since: str) -> list[str]:
+    """
+    Chỉ giữ log lines có timestamp MỚI HƠN since.
+    since: "16/May/2026:09:00:00 +0000"
+    Dùng datetime parse — đúng kể cả qua tháng khác nhau.
+    Trả về tối đa 50 dòng mới nhất.
+    """
+    if not since:
+        return lines[-50:]
+
+    since_dt = _parse_log_ts(since)
+    if not since_dt:
+        return lines[-50:]
+
+    new_lines = []
+    for line in lines:
+        try:
+            start  = line.index("[") + 1
+            end    = line.index("]", start)
+            ts_dt  = _parse_log_ts(line[start:end].strip())
+            if ts_dt and ts_dt > since_dt:
+                new_lines.append(line)
+        except (ValueError, IndexError):
+            new_lines.append(line)
+
+    return new_lines[-100:]
+
+
+def last_timestamp(lines: list[str]) -> str:
+    """Trả về timestamp string của dòng cuối để track cho lần sau."""
+    for line in reversed(lines):
+        try:
+            start = line.index("[") + 1
+            end   = line.index("]", start)
+            return line[start:end].strip()
+        except (ValueError, IndexError):
+            continue
+    return ""
+
+
+@mcp.tool()
+def fetch_web_logs(keyword: str, session_id: str = "default", since: str = "") -> dict:
+    """Fetch web access log lines matching keyword. since: only return lines newer than this timestamp."""
+    kw    = sanitize(keyword)
+    raw   = run_cmd(["grep", "-F", kw, "/shared_logs/access.log"])
     lines = [l for l in raw.split("\n") if l.strip()]
-    return "\n".join(lines[-n:])
+    new   = filter_since(lines, since)
+    return {
+        "session_id":     session_id,
+        "events":         parse_lines("\n".join(new), "web"),
+        "last_timestamp": last_timestamp(new)
+    }
 
 
 @mcp.tool()
-def fetch_web_logs(keyword: str, session_id: str = "default") -> dict:
-    """Fetch recent web access log lines matching keyword for translator pipeline."""
-    kw  = sanitize(keyword)
-    raw = run_cmd(["grep", "-F", kw, "/shared_logs/access.log"])
-    return {"session_id": session_id, "events": parse_lines(tail_lines(raw), "web")}
+def fetch_container_logs(keyword: str, session_id: str = "default", since: str = "") -> dict:
+    """Fetch DVWA container error log lines matching keyword."""
+    kw    = sanitize(keyword)
+    raw   = run_cmd(["grep", "-F", kw, "/shared_logs/error.log"])
+    lines = [l for l in raw.split("\n") if l.strip()]
+    new   = filter_since(lines, since)
+    return {
+        "session_id":     session_id,
+        "events":         parse_lines("\n".join(new), "container"),
+        "last_timestamp": last_timestamp(new)
+    }
 
 
 @mcp.tool()
-def fetch_container_logs(keyword: str, session_id: str = "default") -> dict:
+def fetch_auth_logs(keyword: str, session_id: str = "default", since: str = "") -> dict:
+    """Fetch auth log lines matching keyword."""
+    kw    = sanitize(keyword)
+    raw   = run_cmd(["grep", "-F", kw, "/var/log/auth.log"])
+    lines = [l for l in raw.split("\n") if l.strip()]
+    new   = filter_since(lines, since)
+    return {
+        "session_id":     session_id,
+        "events":         parse_lines("\n".join(new), "auth"),
+        "last_timestamp": last_timestamp(new)
+    }
+
+
+@mcp.tool()
+def fetch_audit_logs(keyword: str, session_id: str = "default", since: str = "") -> dict:
+    """Fetch Linux audit log lines matching keyword."""
+    kw    = sanitize(keyword)
+    raw   = run_cmd(["grep", "-F", kw, "/var/log/audit/audit.log"])
+    lines = [l for l in raw.split("\n") if l.strip()]
+    new   = filter_since(lines, since)
+    return {
+        "session_id":     session_id,
+        "events":         parse_lines("\n".join(new), "audit"),
+        "last_timestamp": last_timestamp(new)
+    }
+
+
+@mcp.tool()
+def fetch_db_logs(keyword: str, session_id: str = "default", since_epoch: float = 0.0) -> dict:
     """
-    Fetch recent DVWA container error log lines matching keyword.
-    Same volume mount as web logs — /shared_logs/.
+    Fetch MySQL container log lines matching keyword.
+    since_epoch: Unix timestamp — chỉ lấy log sau thời điểm này.
     """
-    kw  = sanitize(keyword)
-    raw = run_cmd(["grep", "-F", kw, "/shared_logs/error.log"])
-    return {"session_id": session_id, "events": parse_lines(tail_lines(raw), "container")}
-
-
-@mcp.tool()
-def fetch_auth_logs(keyword: str, session_id: str = "default") -> dict:
-    """Fetch recent auth log lines matching keyword for translator pipeline."""
-    kw  = sanitize(keyword)
-    raw = run_cmd(["grep", "-F", kw, "/var/log/auth.log"])
-    return {"session_id": session_id, "events": parse_lines(tail_lines(raw), "auth")}
-
-
-@mcp.tool()
-def fetch_db_logs(keyword: str, session_id: str = "default") -> dict:
-    """Fetch recent MySQL container log lines matching keyword for translator pipeline."""
     kw     = sanitize(keyword)
-    cached = _cache_get(f"db:{kw}")
+    cached = _cache_get(f"db:{kw}:{since_epoch}")
     if cached is not None:
         return {"session_id": session_id, "events": cached, "from_cache": True}
 
-    raw    = run_cmd(["docker", "logs", "--tail", "200", "dvwa-mysql"])
-    events = parse_lines(tail_lines("\n".join(l for l in raw.split("\n") if kw in l)), "db")
-    _cache_set(f"db:{kw}", events)
-    return {"session_id": session_id, "events": events}
+    raw   = run_cmd(["docker", "logs", "--tail", "200", "dvwa-mysql"])
+    lines = [l for l in raw.split("\n") if kw in l]
 
+    # Docker logs format: "2026-05-16T09:00:00.000000Z message"
+    if since_epoch > 0:
+        filtered = []
+        for line in lines:
+            try:
+                ts_str = line.split(" ")[0].rstrip("Z")
+                ts_dt  = datetime.fromisoformat(ts_str)
+                if ts_dt.timestamp() > since_epoch:
+                    filtered.append(line)
+            except Exception:
+                filtered.append(line)
+        lines = filtered
 
-@mcp.tool()
-def fetch_audit_logs(keyword: str, session_id: str = "default") -> dict:
-    """Fetch recent Linux audit log lines matching keyword for translator pipeline."""
-    kw  = sanitize(keyword)
-    raw = run_cmd(["grep", "-F", kw, "/var/log/audit/audit.log"])
-    return {"session_id": session_id, "events": parse_lines(tail_lines(raw), "audit")}
+    events = parse_lines("\n".join(lines[-20:]), "db")
+    # last_epoch là thời điểm hiện tại để lần sau chỉ lấy log mới hơn
+    last_epoch = time.time()
+    _cache_set(f"db:{kw}:{since_epoch}", events)
+    return {"session_id": session_id, "events": events, "last_epoch": last_epoch}
 
 
 @mcp.tool()
@@ -118,18 +217,24 @@ def fetch_firewall_logs(src_ip: str, session_id: str = "default") -> dict:
 def fetch_wazuh_alerts(src_ip: str, session_id: str = "default") -> dict:
     """
     Pull raw alert events from Wazuh Indexer by source IP.
-    Returns normalized event list for translator pipeline.
-    No queuing, risk scoring, or AI decision here.
+    Only fetches alerts from the last 15 minutes to avoid stale data.
     """
     cached = _cache_get(f"wazuh:{src_ip}")
     if cached is not None:
-        return {"session_id": session_id, "events": cached, "event_count": len(cached), "from_cache": True}
+        return {"session_id": session_id, "events": cached,
+                "event_count": len(cached), "from_cache": True}
+
+    # Tăng lên 15 phút để không bỏ sót alert gần đây
+    since = (datetime.now(timezone.utc) - timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     query = {
         "size": 20,
         "sort": [{"@timestamp": {"order": "desc"}}],
         "query": {
             "bool": {
+                "must": [
+                    {"range": {"@timestamp": {"gte": since}}}
+                ],
                 "should": [
                     {"term": {"data.srcip.keyword": src_ip}},
                     {"match": {"data.srcip": src_ip}}
@@ -144,11 +249,8 @@ def fetch_wazuh_alerts(src_ip: str, session_id: str = "default") -> dict:
             f"{WAZUH_URL}/wazuh-alerts-*/_search",
             auth=(WAZUH_USER, WAZUH_PASS),
             headers={"Content-Type": "application/json"},
-            json=query,
-            verify=False,
-            timeout=30
+            json=query, verify=False, timeout=30
         )
-
         if r.status_code != 200:
             return {"error": f"wazuh_indexer_http_{r.status_code}", "events": []}
 
@@ -176,8 +278,9 @@ def fetch_wazuh_alerts(src_ip: str, session_id: str = "default") -> dict:
 @mcp.tool()
 def fetch_all_sources(keyword: str, src_ip: str, session_id: str = "default") -> dict:
     """
-    Aggregate events from ALL 7 sources in one call (including Wazuh).
+    Aggregate events from ALL 7 sources (including Wazuh).
     Used by Trigger 1 (Wazuh alert path) — has_wazuh_alert will be True.
+    No since filtering — Wazuh trigger always gets full picture.
     """
     all_events = []
 
@@ -194,9 +297,9 @@ def fetch_all_sources(keyword: str, src_ip: str, session_id: str = "default") ->
     all_events.extend(fetch_wazuh_alerts(src_ip, session_id).get("events", []))
 
     return {
-        "session_id":     session_id,
-        "events":         all_events,
-        "event_count":    len(all_events),
+        "session_id":      session_id,
+        "events":          all_events,
+        "event_count":     len(all_events),
         "sources_queried": ["web", "auth", "db", "audit", "container", "firewall", "wazuh"]
     }
 

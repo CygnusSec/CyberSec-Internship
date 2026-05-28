@@ -1,88 +1,27 @@
 import asyncio
 import json
 import time
-import pathlib
-from datetime import datetime, timezone, timedelta
 from app.wazuh_client import WazuhClient
 from app.orchestrator import SOAROrchestrator
 
-POLL_INTERVAL    = 15
-WEB_LOG_INTERVAL = 15
-SINCE_FILE       = pathlib.Path("/tmp/soar_data/ip_since.json")
-VN_TZ            = timezone(timedelta(hours=7))
-
-# Map tháng viết tắt để convert UTC log timestamp sang datetime
-_MONTH_MAP = {
-    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4,
-    "May": 5, "Jun": 6, "Jul": 7, "Aug": 8,
-    "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
-}
-
-
-def load_ip_since() -> dict:
-    try:
-        return json.loads(SINCE_FILE.read_text())
-    except Exception:
-        return {}
-
-
-def save_ip_since(ip_since: dict):
-    try:
-        SINCE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        SINCE_FILE.write_text(json.dumps(ip_since))
-    except Exception:
-        pass
-
-
-def log_ts_to_vn(ts_str: str) -> str:
-    """
-    Convert log timestamp "18/May/2026:17:11:15 +0000" → "19/05 00:11:15 VN"
-    để dễ đọc hơn khi hiển thị.
-    """
-    try:
-        ts = ts_str.split(" ")[0]
-        day, mon_str, rest = ts.split("/")
-        year, hour, minute, second = rest.split(":")
-        month = _MONTH_MAP.get(mon_str, 0)
-        if not month:
-            return ts_str[:20]
-        dt_utc = datetime(int(year), month, int(day),
-                          int(hour), int(minute), int(second),
-                          tzinfo=timezone.utc)
-        dt_vn = dt_utc.astimezone(VN_TZ)
-        return dt_vn.strftime("%d/%m %H:%M:%S +07")
-    except Exception:
-        return ts_str[:20]
-
-
-def ts_newer(new_ts: str, old_ts: str) -> bool:
-    """
-    So sánh 2 timestamp string dạng "18/May/2026:17:11:15 +0000".
-    Trả True nếu new_ts mới hơn old_ts.
-    """
-    def parse(ts):
-        try:
-            ts = ts.split(" ")[0]
-            day, mon_str, rest = ts.split("/")
-            year, h, m, s = rest.split(":")
-            month = _MONTH_MAP.get(mon_str, 0)
-            return datetime(int(year), month, int(day), int(h), int(m), int(s))
-        except Exception:
-            return datetime.min
-    return parse(new_ts) > parse(old_ts)
+POLL_INTERVAL    = 10   # giây poll Wazuh
+WEB_LOG_INTERVAL = 30   # giây poll web log để lấy IP mới
 
 
 async def get_active_ips_from_web_log(orchestrator: SOAROrchestrator) -> set:
-    """Lấy IP active từ collector MCP."""
+    """
+    Lấy IP active từ collector MCP — không đọc file trực tiếp.
+    Collector đã mount volume đúng, dùng nó để parse web log.
+    """
     try:
         result = await orchestrator._call(
             orchestrator.collector_mcp,
             "fetch_web_logs",
-            {"keyword": "HTTP/1", "session_id": "ip_scan", "since": ""}
+            {"keyword": "HTTP/1", "session_id": "ip_scan"}
         )
         ips = set()
         for event in result.get("events", []):
-            raw   = event.get("raw", "")
+            raw = event.get("raw", "")
             parts = raw.split()
             if parts:
                 ip = parts[0]
@@ -102,11 +41,7 @@ async def main():
     orchestrator = SOAROrchestrator()
 
     processed_alert_ids = set()
-    processed_web_ips   = {}
-    ip_since            = load_ip_since()
-
-    if ip_since:
-        print(f"[+] Loaded ip_since for {len(ip_since)} IPs from previous session")
+    processed_web_ips   = {}  # ip → last_processed_time
 
     print("[+] SOAR Host started — Dual trigger mode")
     print("[+] Trigger 1: Wazuh alerts (real-time attack detection)")
@@ -117,10 +52,11 @@ async def main():
 
     while True:
         # ══════════════════════════════════════════════════════════════════
-        # TRIGGER 1 — Wazuh alert
+        # TRIGGER 1 — Wazuh alert (poll mỗi 10s)
         # ══════════════════════════════════════════════════════════════════
         try:
             alert = await wazuh.get_latest_alert()
+
             if alert:
                 alert_id = alert.get("id")
                 if alert_id and alert_id not in processed_alert_ids:
@@ -141,7 +77,8 @@ async def main():
             traceback.print_exc()
 
         # ══════════════════════════════════════════════════════════════════
-        # TRIGGER 2 — Web log polling
+        # TRIGGER 2 — Web log polling (poll mỗi 30s)
+        # Theo dõi mọi IP dù Wazuh không alert
         # ══════════════════════════════════════════════════════════════════
         now = time.time()
         if now - last_web_poll >= WEB_LOG_INTERVAL:
@@ -151,42 +88,20 @@ async def main():
 
                 for ip in active_ips:
                     last_time = processed_web_ips.get(ip, 0)
-                    if now - last_time < 60:
+                    # Xử lý mỗi IP tối đa mỗi 5 phút
+                    if now - last_time < 300:
                         continue
 
                     processed_web_ips[ip] = now
-                    since = ip_since.get(ip, {})
-
-                    # Hiển thị since theo giờ VN cho dễ đọc
-                    if since:
-                        web_since = since.get("web", "")
-                        since_display = log_ts_to_vn(web_since) if web_since else "unknown"
-                        print(f"[~] WEB LOG TRIGGER: {ip} (since={since_display})")
-                    else:
-                        print(f"[~] WEB LOG TRIGGER: {ip} (first scan)")
-
-                    result = await orchestrator.process_web_ip(ip, since=since)
-
-                    # Chỉ update ip_since khi timestamp MỚI HƠN timestamp cũ
-                    new_timestamps = result.get("last_timestamps", {})
-                    if new_timestamps:
-                        if ip not in ip_since:
-                            ip_since[ip] = {}
-                        updated = False
-                        for src, ts in new_timestamps.items():
-                            if ts and ts_newer(str(ts), str(ip_since[ip].get(src, ""))):
-                                ip_since[ip][src] = ts
-                                updated = True
-                        if updated:
-                            save_ip_since(ip_since)
-
+                    print(f"[~] WEB LOG TRIGGER: {ip}")
+                    result = await orchestrator.process_web_ip(ip)
                     _print_result(result)
 
                 # Cleanup IP cũ hơn 30 phút
-                cutoff = now - 1800
-                processed_web_ips = {ip: t for ip, t in processed_web_ips.items() if t > cutoff}
-                ip_since = {ip: s for ip, s in ip_since.items()
-                            if processed_web_ips.get(ip, 0) > cutoff}
+                processed_web_ips = {
+                    ip: t for ip, t in processed_web_ips.items()
+                    if t > now - 1800
+                }
 
             except Exception as e:
                 print(f"[WEB LOG ERROR] {e}")

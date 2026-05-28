@@ -4,16 +4,25 @@ import urllib.parse
 
 mcp = FastMCP("translator-server")
 
-# Static assets — bỏ qua hoàn toàn, không có giá trị behavioral
+# Static assets — bỏ qua hoàn toàn
 _NOISE_EXTENSIONS = (
     ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico",
     ".woff", ".woff2", ".ttf", ".eot", ".svg", ".webp",
     ".map", ".min.js", ".min.css"
 )
 
-# Label cho hành động bình thường — AI cần ngữ cảnh đầy đủ
+# DVWA safe navigation paths — không phải LFI dù có "include" trong URL
+# Đây là các page DVWA legitimate, chỉ classify là normal browse
+_DVWA_SAFE_PATHS = (
+    "page=include.php",
+    "page=source.php",
+    "/vulnerabilities/fi/?page=include",
+    "/vulnerabilities/fi/?page=source",
+)
+
 _NORMAL_BEHAVIOR_LABEL = {
     "page_browse":        "User browsing a normal page",
+    "vulnerability_lab":  "User accessing vulnerability lab page (DVWA)",
     "login_page_visit":   "User visiting login page",
     "login_attempt":      "User attempting authentication",
     "logout":             "User logged out",
@@ -33,10 +42,10 @@ def severity_rank(level):
 
 def apply_detection(result, action, intent, page, severity, confidence, evidence):
     if severity_rank(severity) >= severity_rank(result["severity"]):
-        result["action"] = action
-        result["intent"] = intent
-        result["page"] = page
-        result["severity"] = severity
+        result["action"]     = action
+        result["intent"]     = intent
+        result["page"]       = page
+        result["severity"]   = severity
         result["confidence"] = max(result["confidence"], confidence)
 
     items = evidence if isinstance(evidence, list) else [evidence]
@@ -45,11 +54,11 @@ def apply_detection(result, action, intent, page, severity, confidence, evidence
             result["evidence"].append(item)
 
 
-def classify_normal_behavior(x: str, method: str) -> str:
-    """
-    Classify unknown actions into normal behavioral categories
-    so AI has full context of what the user is doing.
-    """
+def classify_normal_behavior(x: str, method: str, raw: str) -> str:
+    """Classify unknown actions into normal behavioral categories."""
+    # DVWA vulnerability lab pages — người dùng đang học/test
+    if "/vulnerabilities/" in raw.lower():
+        return "vulnerability_lab"
     if re.search(r"\blogin\b|\bsignin\b|\bauth\b", x):
         return "login_page_visit"
     if re.search(r"\blogout\b|\bsignout\b", x):
@@ -76,16 +85,16 @@ def classify_normal_behavior(x: str, method: str) -> str:
 _RE_HTTP_METHOD = re.compile(
     r'"(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(.+?)\s+HTTP', re.IGNORECASE
 )
-_RE_HEX = re.compile(r"0x[0-9a-f]+")
-_RE_MYSQL_COMMENT = re.compile(r"/\*!\d+\s*")
-_RE_BLOCK_COMMENT = re.compile(r"/\*.*?\*/")
+_RE_HEX        = re.compile(r"0x[0-9a-f]+")
+_RE_MYSQL_CMT  = re.compile(r"/\*!\d+\s*")
+_RE_BLOCK_CMT  = re.compile(r"/\*.*?\*/")
 _RE_WHITESPACE = re.compile(r"\s+")
 
-_RE_LOGIN = re.compile(r"\blogin\b")
+_RE_LOGIN    = re.compile(r"\blogin\b")
 _RE_SSH_BRUTE = re.compile(r"failed password for .* from .* (ssh|port \d+)")
-_RE_SSH_ENUM = re.compile(r"invalid user .* from")
-_RE_DPT = re.compile(r"dpt=\d+")
-_RE_FW_BLOCK = re.compile(r"block|drop|reject")
+_RE_SSH_ENUM  = re.compile(r"invalid user .* from")
+_RE_DPT       = re.compile(r"dpt=\d+")
+_RE_FW_BLOCK  = re.compile(r"block|drop|reject")
 
 _SQLI_COMPILED = [re.compile(p) for p in [
     r"or\s+1\s*=\s*1", r"or\s+true", r"and\s+1\s*=\s*1", r"and\s+false",
@@ -107,7 +116,8 @@ _LFI_COMPILED = [re.compile(p) for p in [
     r"boot\.ini", r"win\.ini", r"system32",
     r"php://filter", r"php://input", r"php://stdin",
     r"file://", r"phar://", r"zip://", r"data://",
-    r"page=.*include", r"path=.*\.\.",
+    # Bỏ r"page=.*include" vì false positive với DVWA page=include.php
+    r"path=.*\.\.",
 ]]
 
 _RFI_COMPILED = [re.compile(p) for p in [
@@ -193,10 +203,9 @@ _ATTACK_MARKERS = [
 
 
 def preprocess(raw_log: str) -> tuple[str, str]:
-    """Returns (normalized_text, http_method)"""
-    m = _RE_HTTP_METHOD.search(raw_log)
+    m      = _RE_HTTP_METHOD.search(raw_log)
     method = m.group(1).upper() if m else "GET"
-    x = m.group(2) if m else raw_log
+    x      = m.group(2) if m else raw_log
 
     for _ in range(3):
         decoded = urllib.parse.unquote_plus(x)
@@ -207,8 +216,8 @@ def preprocess(raw_log: str) -> tuple[str, str]:
     x = x.lower()
     x = x.replace("'", " ").replace('"', " ")
     x = x.replace("#", " ").replace("--", " -- ")
-    x = _RE_MYSQL_COMMENT.sub(" ", x)
-    x = _RE_BLOCK_COMMENT.sub(" ", x)
+    x = _RE_MYSQL_CMT.sub(" ", x)
+    x = _RE_BLOCK_CMT.sub(" ", x)
 
     def hex_decode(m):
         try:
@@ -236,45 +245,54 @@ def normalize_log(event: dict) -> dict:
         "action": "unknown", "intent": "unknown", "page": "generic",
         "severity": "low", "confidence": 0.25,
         "source": source, "timestamp": timestamp, "srcip": srcip,
-        "evidence": [], "raw_normalized": x, "multi_stage": False,
+        "evidence": [], "raw_normalized": x[:200], "multi_stage": False,
         "is_attack": False,
     }
 
     # ── LOGIN ─────────────────────────────────────────────────────────────
     if _RE_LOGIN.search(x):
-        apply_detection(result, "login_attempt", "authentication", "authentication", "low", 0.40, "login_detected")
+        apply_detection(result, "login_attempt", "authentication",
+                        "authentication", "low", 0.40, "login_detected")
 
     # ── SQL INJECTION ──────────────────────────────────────────────────────
     matched_sqli = [p for p in _SQLI_COMPILED if p.search(x)]
     if matched_sqli:
         result["is_attack"] = True
-        apply_detection(result, "authentication_bypass_attempt", "sql_injection", "data_query", "high", 0.97,
+        apply_detection(result, "authentication_bypass_attempt", "sql_injection",
+                        "data_query", "high", 0.97,
                         ["sqli_pattern_detected", f"matched_rules={len(matched_sqli)}"])
 
-    # ── LFI ───────────────────────────────────────────────────────────────
-    if any(p.search(x) for p in _LFI_COMPILED):
+    # ── LFI — kiểm tra DVWA safe paths trước ──────────────────────────────
+    raw_lower = raw_log.lower()
+    is_dvwa_safe = any(safe in raw_lower for safe in _DVWA_SAFE_PATHS)
+    if not is_dvwa_safe and any(p.search(x) for p in _LFI_COMPILED):
         result["is_attack"] = True
-        apply_detection(result, "local_file_inclusion_attempt", "file_disclosure", "file_access", "high", 0.95, "lfi_pattern_detected")
+        apply_detection(result, "local_file_inclusion_attempt", "file_disclosure",
+                        "file_access", "high", 0.95, "lfi_pattern_detected")
 
     # ── RFI ───────────────────────────────────────────────────────────────
     if any(p.search(x) for p in _RFI_COMPILED):
         result["is_attack"] = True
-        apply_detection(result, "remote_file_inclusion_attempt", "remote_code_execution", "file_access", "critical", 0.96, "rfi_pattern_detected")
+        apply_detection(result, "remote_file_inclusion_attempt", "remote_code_execution",
+                        "file_access", "critical", 0.96, "rfi_pattern_detected")
 
     # ── COMMAND INJECTION ──────────────────────────────────────────────────
     if any(p.search(x) for p in _CMDI_COMPILED):
         result["is_attack"] = True
-        apply_detection(result, "command_injection_attempt", "remote_code_execution", "system_command", "critical", 0.98, "command_injection_detected")
+        apply_detection(result, "command_injection_attempt", "remote_code_execution",
+                        "system_command", "critical", 0.98, "command_injection_detected")
 
     # ── XSS ───────────────────────────────────────────────────────────────
     if any(p.search(x) for p in _XSS_COMPILED):
         result["is_attack"] = True
-        apply_detection(result, "cross_site_scripting_attempt", "client_side_attack", "frontend_attack", "high", 0.93, "xss_pattern_detected")
+        apply_detection(result, "cross_site_scripting_attempt", "client_side_attack",
+                        "frontend_attack", "high", 0.93, "xss_pattern_detected")
 
     # ── SSRF ──────────────────────────────────────────────────────────────
     if any(p.search(x) for p in _SSRF_COMPILED):
         result["is_attack"] = True
-        apply_detection(result, "ssrf_attempt", "internal_network_probe", "backend_service", "critical", 0.96, "ssrf_pattern_detected")
+        apply_detection(result, "ssrf_attempt", "internal_network_probe",
+                        "backend_service", "critical", 0.96, "ssrf_pattern_detected")
 
     # ── SCAN / SENSITIVE PATHS ─────────────────────────────────────────────
     matched_scan = [p for p in _SCAN_COMPILED if p.search(x)]
@@ -287,38 +305,45 @@ def normalize_log(event: dict) -> dict:
             "privilege_discovery" if is_admin else "reconnaissance",
             "admin_panel" if is_admin else "resource_discovery",
             "medium", 0.80 if is_admin else 0.75,
-            ["admin_probe" if is_admin else "sensitive_file_access", f"matched_paths={len(matched_scan)}"]
+            ["admin_probe" if is_admin else "sensitive_file_access",
+             f"matched_paths={len(matched_scan)}"]
         )
 
     # ── WEBSHELL ──────────────────────────────────────────────────────────
     if any(p.search(x) for p in _WEBSHELL_COMPILED):
         result["is_attack"] = True
-        apply_detection(result, "webshell_execution", "post_exploitation", "system_command", "critical", 0.99, "webshell_detected")
+        apply_detection(result, "webshell_execution", "post_exploitation",
+                        "system_command", "critical", 0.99, "webshell_detected")
 
     # ── REVERSE SHELL / C2 ────────────────────────────────────────────────
     if any(p.search(x) for p in _C2_COMPILED):
         result["is_attack"] = True
-        apply_detection(result, "reverse_shell_attempt", "c2_communication", "system_command", "critical", 0.99, "reverse_shell_detected")
+        apply_detection(result, "reverse_shell_attempt", "c2_communication",
+                        "system_command", "critical", 0.99, "reverse_shell_detected")
 
     # ── SSH BRUTE FORCE ────────────────────────────────────────────────────
     if _RE_SSH_BRUTE.search(x):
         result["is_attack"] = True
-        apply_detection(result, "brute_force_attempt", "credential_attack", "remote_access", "medium", 0.85, "failed_password_detected")
+        apply_detection(result, "brute_force_attempt", "credential_attack",
+                        "remote_access", "medium", 0.85, "failed_password_detected")
 
     if _RE_SSH_ENUM.search(x):
         result["is_attack"] = True
-        apply_detection(result, "user_enumeration_attempt", "reconnaissance", "remote_access", "medium", 0.80, "invalid_user_detected")
+        apply_detection(result, "user_enumeration_attempt", "reconnaissance",
+                        "remote_access", "medium", 0.80, "invalid_user_detected")
 
     # ── PRIVILEGE ESCALATION ───────────────────────────────────────────────
     if any(p.search(x) for p in _PRIV_COMPILED):
         result["is_attack"] = True
-        apply_detection(result, "privilege_escalation_attempt", "post_exploitation", "system_access", "critical", 0.98, "privilege_escalation_signal")
+        apply_detection(result, "privilege_escalation_attempt", "post_exploitation",
+                        "system_access", "critical", 0.98, "privilege_escalation_signal")
 
     # ── FIREWALL BLOCK ─────────────────────────────────────────────────────
     if source == "firewall":
         if _RE_DPT.search(x) or _RE_FW_BLOCK.search(x):
             result["is_attack"] = True
-            apply_detection(result, "port_scan_detected", "reconnaissance", "network_perimeter", "medium", 0.78, "firewall_block_detected")
+            apply_detection(result, "port_scan_detected", "reconnaissance",
+                            "network_perimeter", "medium", 0.78, "firewall_block_detected")
 
     # ── WAZUH PASSTHROUGH ─────────────────────────────────────────────────
     if source == "wazuh" and rule_level is not None:
@@ -328,11 +353,13 @@ def normalize_log(event: dict) -> dict:
             level = 0
         if level >= 12:
             result["is_attack"] = True
-            apply_detection(result, "wazuh_critical_alert", "wazuh_detection", "siem_alert", "critical", 0.95,
+            apply_detection(result, "wazuh_critical_alert", "wazuh_detection", "siem_alert",
+                            "critical", 0.95,
                             [f"wazuh_rule_level={level}", f"wazuh_desc={rule_description[:80]}"])
         elif level >= 7:
             result["is_attack"] = True
-            apply_detection(result, "wazuh_high_alert", "wazuh_detection", "siem_alert", "high", 0.85,
+            apply_detection(result, "wazuh_high_alert", "wazuh_detection", "siem_alert",
+                            "high", 0.85,
                             [f"wazuh_rule_level={level}", f"wazuh_desc={rule_description[:80]}"])
 
     # ── CONFIDENCE FLOOR ──────────────────────────────────────────────────
@@ -348,27 +375,23 @@ def normalize_log(event: dict) -> dict:
         result["multi_stage"] = True
 
     # ── CLASSIFY NORMAL BEHAVIOR ───────────────────────────────────────────
-    # Nếu không phát hiện attack, phân loại hành động bình thường
-    # để AI có đủ ngữ cảnh phân tích behavioral chain
     if result["action"] == "unknown" and not result["is_attack"]:
-        normal_action = classify_normal_behavior(x, method)
-        result["action"] = normal_action
-        result["intent"] = "normal_activity"
-        result["page"] = "application"
-        result["behavior_label"] = _NORMAL_BEHAVIOR_LABEL.get(normal_action, _NORMAL_BEHAVIOR_LABEL["unknown"])
+        normal_action = classify_normal_behavior(x, method, raw_log)
+        result["action"]         = normal_action
+        result["intent"]         = "normal_activity"
+        result["page"]           = "application"
+        result["behavior_label"] = _NORMAL_BEHAVIOR_LABEL.get(
+            normal_action, _NORMAL_BEHAVIOR_LABEL["unknown"])
     else:
-        result["behavior_label"] = _NORMAL_BEHAVIOR_LABEL.get(result["action"], result["action"])
+        result["behavior_label"] = _NORMAL_BEHAVIOR_LABEL.get(
+            result["action"], result["action"])
 
     return result
 
 
 @mcp.tool()
 def translate_behavior(event: dict) -> dict:
-    """
-    Receive a raw event dict from collector and return a normalized
-    behavioral event for the correlator. Classifies ALL user actions
-    including normal ones so AI can analyze full behavioral chain.
-    """
+    """Normalize a single raw event for correlator pipeline."""
     if not event or not isinstance(event, dict):
         return {"error": "invalid_input", "action": "unknown"}
     return normalize_log(event)
@@ -377,9 +400,9 @@ def translate_behavior(event: dict) -> dict:
 @mcp.tool()
 def translate_batch(events: list) -> dict:
     """
-    Translate a full batch of raw collector events in one call.
-    Only skips static assets (css, js, images) — keeps ALL user behavior
-    including normal actions for full behavioral chain analysis.
+    Translate a full batch of raw collector events.
+    Skips static assets only. Keeps ALL user behavior including normal actions.
+    Fixes LFI false positive for DVWA safe navigation pages.
     """
     results = []
     skipped = 0
@@ -389,11 +412,10 @@ def translate_batch(events: list) -> dict:
             skipped += 1
             continue
 
-        raw = event.get("raw", "").lower()
-        url = event.get("url", "").lower()
+        raw  = event.get("raw", "").lower()
+        url  = event.get("url", "").lower()
         path = raw + url
 
-        # Chỉ bỏ static assets — không bỏ hành động người dùng
         if any(ext in path for ext in _NOISE_EXTENSIONS):
             skipped += 1
             continue
@@ -401,9 +423,9 @@ def translate_batch(events: list) -> dict:
         results.append(normalize_log(event))
 
     return {
-        "translated": results,
+        "translated":       results,
         "translated_count": len(results),
-        "skipped_count": skipped
+        "skipped_count":    skipped
     }
 
 

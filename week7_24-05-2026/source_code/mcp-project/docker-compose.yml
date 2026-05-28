@@ -100,6 +100,8 @@ services:
       - correlator_server
       - reasoning_server
       - response_server
+    volumes:
+      - ./data:/tmp/soar_data
     restart: unless-stopped
 
 networks:

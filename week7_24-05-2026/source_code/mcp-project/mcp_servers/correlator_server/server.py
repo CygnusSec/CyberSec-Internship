@@ -31,7 +31,6 @@ RISK_MAP = {
     "wazuh_critical_alert": 10,
     "wazuh_high_alert": 6,
     "sql_injection": 8,
-    # Normal behaviors — risk thấp, cần để AI thấy chuỗi hành động
     "page_browse": 0,
     "login_page_visit": 0,
     "logout": 0,
@@ -63,7 +62,6 @@ BEHAVIOR_LABEL = {
     "wazuh_critical_alert": "Wazuh critical rule triggered",
     "wazuh_high_alert": "Wazuh high severity rule triggered",
     "sql_injection": "SQL injection attack detected",
-    # Normal behaviors
     "page_browse": "User browsing a normal page",
     "login_page_visit": "User visiting login page",
     "logout": "User logged out",
@@ -79,7 +77,7 @@ BEHAVIOR_LABEL = {
 THRESHOLD_EVENTS = 30
 THRESHOLD_RISK   = 40
 TIMEOUT_SEC      = 1800
-FLUSH_LOCK_SEC   = 5
+FLUSH_LOCK_SEC   = 2
 FLUSH_WINDOW_SEC = 60
 FLUSH_MAX        = 5
 
@@ -87,6 +85,8 @@ _missing_label = set(RISK_MAP) - set(BEHAVIOR_LABEL)
 _missing_risk  = set(BEHAVIOR_LABEL) - set(RISK_MAP)
 assert not _missing_label, f"Missing BEHAVIOR_LABEL for: {_missing_label}"
 assert not _missing_risk,  f"Missing RISK_MAP for: {_missing_risk}"
+
+
 
 
 def save_store():
@@ -138,6 +138,25 @@ def init_session(user_id: str) -> dict:
     return s
 
 
+def cleanup_session(session: dict):
+    """Giải phóng tất cả trạng thái expired. PHẢI gọi trước should_flush()."""
+    now = time.time()
+
+    if session.get("flush_lock") and now >= session.get("flush_lock_until", 0):
+        session["flush_lock"] = False
+
+    if now - session.get("flush_reset", 0) > FLUSH_WINDOW_SEC:
+        session["flush_counter"] = 0
+        session["flush_reset"]   = now
+
+    if session.get("pending_cleanup") and session.get("last_flush_time"):
+        if now - session["last_flush_time"] >= TIMEOUT_SEC:
+            session["forensic_snapshot"] = []
+            session["pending_cleanup"]   = False
+            session["last_flush_time"]   = None
+            session["flush_lock"]        = False
+
+
 def detect_session_stage(events: list) -> str:
     actions     = [e.get("action") for e in events]
     multi_stage = any(e.get("multi_stage") for e in events)
@@ -175,19 +194,10 @@ def detect_session_stage(events: list) -> str:
     return "normal_activity"
 
 
-def cleanup_old_queue(session: dict):
-    if session.get("pending_cleanup") and session.get("last_flush_time"):
-        if time.time() - session["last_flush_time"] >= TIMEOUT_SEC:
-            session["forensic_snapshot"] = []
-            session["pending_cleanup"]   = False
-            session["last_flush_time"]   = None
-            session["flush_lock"]        = False
-
-
-def update_session(user_id: str, event: dict) -> dict:
+def update_session(user_id: str, event: dict):
+    """Add event vào session."""
     now     = time.time()
     session = init_session(user_id)
-    cleanup_old_queue(session)
 
     action    = event.get("action", "unknown")
     base_risk = RISK_MAP.get(action, 0)
@@ -207,28 +217,19 @@ def update_session(user_id: str, event: dict) -> dict:
     session["events"].append(event)
     session["risk"] = min(session["risk"] * time_decay + base_risk, 100.0)
     session["last_update"] = now
-    return session
+    return True
 
 
 def should_flush(session: dict) -> bool:
-    now        = time.time()
     queue_size = len(session["events"])
     risk       = session["risk"]
-    idle_time  = now - session["last_update"]
+    idle_time  = time.time() - session["last_update"]
 
-    if now - session.get("flush_reset", 0) > FLUSH_WINDOW_SEC:
-        session["flush_counter"] = 0
-        session["flush_reset"]   = now
-
+    if session.get("flush_lock"):
+        return False
     if session.get("flush_counter", 0) >= FLUSH_MAX:
         return False
 
-    if session.get("flush_lock"):
-        if now < session.get("flush_lock_until", 0):
-            return False
-        session["flush_lock"] = False
-
-    # Flush ngay nếu có Wazuh alert — chắc chắn tấn công
     has_wazuh = any(e.get("source") == "wazuh" for e in session["events"])
     if has_wazuh:
         session["flush_counter"] += 1
@@ -242,12 +243,15 @@ def should_flush(session: dict) -> bool:
     if len(attack_types) >= 2:
         session["flush_counter"] += 1
         return True
+
     if queue_size >= THRESHOLD_EVENTS:
         session["flush_counter"] += 1
         return True
+
     if risk >= THRESHOLD_RISK:
         session["flush_counter"] += 1
         return True
+
     if queue_size > 0 and idle_time >= TIMEOUT_SEC:
         session["flush_counter"] += 1
         return True
@@ -271,21 +275,16 @@ def build_story(events: list) -> list:
             "timestamp": e.get("timestamp"),
             "multi_stage": e.get("multi_stage", False),
             "evidence": e.get("evidence", []),
-            "raw_normalized": e.get("raw_normalized", ""),
+            "raw_normalized": e.get("raw_normalized", "")[:150],  # giới hạn 150 ký tự
         })
     return story
 
 
 def build_payload(session: dict, stage: str) -> dict:
     events = session["events"]
-
-    # Flag quan trọng: queue có chứa Wazuh alert không?
-    # Có → chắc chắn tấn công → active response ngay
-    # Không → AI phân tích behavioral chain
     has_wazuh_alert = any(e.get("source") == "wazuh" for e in events)
-
-    attack_events  = [e for e in events if e.get("is_attack")]
-    normal_events  = [e for e in events if not e.get("is_attack")]
+    attack_events   = [e for e in events if e.get("is_attack")]
+    normal_events   = [e for e in events if not e.get("is_attack")]
 
     return {
         "history": build_story(events),
@@ -341,13 +340,15 @@ def record_ai_result(session: dict, stage: str, ai_result: dict):
 
 @mcp.tool()
 def add_event(event: dict, user_id: str) -> dict:
-    """Receive a single translated behavioral event and accumulate into session queue."""
+    """Receive a single translated behavioral event."""
     if not event or not isinstance(event, dict):
         return {"error": "invalid_input"}
 
     with STORE_LOCK:
-        session = update_session(user_id, event)
-        result  = {
+        session = init_session(user_id)
+        cleanup_session(session)
+        update_session(user_id, event)
+        result = {
             "user_id": user_id,
             "queue_size": len(session["events"]),
             "current_risk": round(session["risk"], 2),
@@ -366,22 +367,33 @@ def add_event(event: dict, user_id: str) -> dict:
 
 @mcp.tool()
 def add_event_batch(events: list, user_id: str) -> dict:
-    """Receive a batch of translated behavioral events. Includes normal actions for full chain analysis."""
+    """
+    Receive a batch of translated behavioral events.
+    Dedup events dựa trên raw content hash — không add event đã có trong queue.
+    cleanup_session() gọi TRƯỚC vòng loop.
+    """
     if not events or not isinstance(events, list):
         return {"error": "invalid_input"}
 
     with STORE_LOCK:
+        session = init_session(user_id)
+        cleanup_session(session)  # TRƯỚC vòng loop
+
+        added_count   = 0
+        skipped_count = 0
         for event in events:
             if isinstance(event, dict):
                 update_session(user_id, event)
+                added_count += 1
 
-        session = SESSION_STORE.get(user_id, {})
-        result  = {
+        result = {
             "user_id": user_id,
             "queue_size": len(session.get("events", [])),
             "current_risk": round(session.get("risk", 0.0), 2),
             "session_stage": session.get("session_stage", "normal_activity"),
             "ready_for_ai": False,
+            "added": added_count,
+            "deduped": skipped_count,
         }
         if should_flush(session):
             payload = do_flush(session, user_id)
@@ -395,7 +407,7 @@ def add_event_batch(events: list, user_id: str) -> dict:
 
 @mcp.tool()
 def update_ai_context(user_id: str, ai_result: dict) -> dict:
-    """Store AI verdict back into session — implements next_payload = prev_result + new_behaviors."""
+    """Store AI verdict back into session."""
     if not user_id or not isinstance(ai_result, dict):
         return {"error": "invalid_input"}
 
@@ -410,11 +422,12 @@ def update_ai_context(user_id: str, ai_result: dict) -> dict:
 
 @mcp.tool()
 def get_session_status(user_id: str) -> dict:
-    """Return current session state without modifying anything."""
+    """Return current session state."""
     with STORE_LOCK:
         session = SESSION_STORE.get(user_id)
         if not session:
             return {"error": "session_not_found"}
+        now = time.time()
         return {
             "user_id": user_id,
             "queue_size": len(session.get("events", [])),
@@ -423,6 +436,8 @@ def get_session_status(user_id: str) -> dict:
             "pending_cleanup": session.get("pending_cleanup", False),
             "context_memory_size": len(session.get("ai_context", [])),
             "flush_counter": session.get("flush_counter", 0),
+            "flush_lock": session.get("flush_lock", False),
+            "lock_remaining": round(session.get("flush_lock_until", 0) - now, 1),
             "last_flush_time": session.get("last_flush_time"),
         }
 
@@ -444,8 +459,9 @@ def get_forensic_snapshot(user_id: str) -> dict:
 
 @mcp.tool()
 def list_active_sessions() -> dict:
-    """Return all active sessions — useful for dual trigger to know which IPs to watch."""
+    """Return all active sessions."""
     with STORE_LOCK:
+        now      = time.time()
         sessions = []
         for uid, s in SESSION_STORE.items():
             sessions.append({
@@ -453,7 +469,9 @@ def list_active_sessions() -> dict:
                 "queue_size": len(s.get("events", [])),
                 "risk": round(s.get("risk", 0.0), 2),
                 "stage": s.get("session_stage", "normal_activity"),
-                "last_update": s.get("last_update"),
+                "flush_lock": s.get("flush_lock", False),
+                "lock_remaining": round(s.get("flush_lock_until", 0) - now, 1),
+                "flush_counter": s.get("flush_counter", 0),
             })
     return {"sessions": sessions, "count": len(sessions)}
 
